@@ -31,6 +31,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>Dependencies\0Harmony.dll</HintPath>
+    </Reference>
     <Reference Include="Aki.Reflection">
       <HintPath>Dependencies\Aki.Reflection.dll</HintPath>
     </Reference>
@@ -43,8 +46,11 @@
     <Reference Include="Comfort">
       <HintPath>Dependencies\Comfort.dll</HintPath>
     </Reference>
-    <Reference Include="Mono.Data.Sqlite">
-      <HintPath>Dependencies\Mono.Data.Sqlite.dll</HintPath>
+    <Reference Include="ItemComponent.Types">
+      <HintPath>Dependencies\ItemComponent.Types.dll</HintPath>
+    </Reference>
+    <Reference Include="ItemTemplate.Types">
+      <HintPath>Dependencies\ItemTemplate.Types.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="Microsoft.CSharp" />

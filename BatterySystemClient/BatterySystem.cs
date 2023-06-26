@@ -8,59 +8,98 @@ using BSG.CameraEffects;
 using Comfort.Common;
 using EFT;
 using HarmonyLib;
+using System.Collections;
+using System.Collections.Generic;
+using EFT.CameraControl;
+using EFT.Interactive;
+using System;
+using Aki.Reflection.Utils;
+using static Val;
 
 namespace BatterySystem
 {
 	public class BatterySystemPatch : ModulePatch
 	{
-		protected override MethodBase GetTargetMethod()
+		public static bool drainingBattery = false;
+		public static Item batteryInNVG = null;
+		public static ResourceComponent batteryResource = null;
+
+		private static InventoryControllerClass inventoryController = null;
+		private static Slot headWearSlot = null;
+		private static NightVisionComponent headWearNVG = null;
+		public static NightVision nightVision = null;
+		//private static Type _onType;
+		//private static bool nightVision_on = false;
+
+		public static void checkBattery()
 		{
-			return typeof(Slot).GetMethod(nameof(Slot.ApplyContainedItem));
+			if (batteryInNVG != null) // NVG has battery installed and headwear is equipped
+			{
+				Logger.LogInfo("Contains 1 Item: " + batteryInNVG);
+				//enable nvg if has battery
+				if (batteryResource.Value > 0 && nightVision.On)
+				{
+					nightVision.Color = headWearNVG.Template.Color;
+					drainingBattery = true;
+				}
+				else
+				{
+					nightVision.Color = Color.black;
+					drainingBattery = false;
+				}
+			}
+			else
+			{
+				nightVision.Color = Color.black;
+				drainingBattery = false;
+			}
 		}
 
-		public static bool drainingBattery = false;
-		public static Slot batterySlot = null;
-		private static NightVision nightVision = null;
+		protected override MethodBase GetTargetMethod()
+		{
+			//_onType = PatchConstants.EftTypes.Single(x => x.GetMethod("_on") != null);
+			return typeof(Slot).GetMethod(nameof(Slot.ApplyContainedItem));
+		}
 
 		[PatchPostfix]
 		static void Postfix(ref Slot __instance)
 		{
-			if (!BatterySystemConfig.EnableMod.Value || Singleton<GameWorld>.Instance == null) return;
+			inventoryController = (InventoryControllerClass)AccessTools.Field(typeof(Player), "_inventoryController").GetValue(BatterySystemPlugin.gameWorld.MainPlayer);
+			headWearSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
 
 			Logger.LogInfo("--- BATTERYSYSTEM ---");
 			Logger.LogInfo("At: " + Time.time);
-			Logger.LogInfo("Parent: " + __instance.ParentItem);
-			Logger.LogInfo("ParentItem.Template.Parent._id: " + __instance.ParentItem.Template.Parent._id);
-			
+			Logger.LogInfo(__instance);
+
+			if (!BatterySystemConfig.EnableMod.Value || Singleton<GameWorld>.Instance == null || headWearSlot.Items.Count() == 0) //uhh if disabled
+			{
+				drainingBattery = false; // if the headwear is removed, stop draining battery and return to skip following statements
+				return;
+			}
+
+			headWearNVG = headWearSlot.ContainedItem.GetItemComponentsInChildren<NightVisionComponent>().FirstOrDefault();
+			Logger.LogInfo(headWearNVG);
+			Logger.LogInfo(headWearNVG.Item);
+
+			batteryInNVG = headWearSlot.ContainedItem.GetAllItems().FirstOrDefault(item => item.TemplateId == "aaa-battery");
+			Logger.LogInfo(batteryInNVG);
+
 			nightVision = GameObject.Find("FPS Camera").GetComponent<NightVision>();
+			Logger.LogInfo("NVG: " + nightVision);
+			//ERROR
+			batteryResource = batteryInNVG.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault();
+			Logger.LogInfo("Battery Resource: " + batteryResource.Value);
 
-			batterySlot = __instance;
-			drainingBattery = false;
-			if (__instance.Items.Count() == 0) // item being removed
-			{
-				Logger.LogInfo("Contains 0 Items " + __instance.ContainedItem);
-			}
-			else if (__instance.Items.Count() == 1) // item being added
-			{
-				Logger.LogInfo("Contains 1 Item: " + __instance.ContainedItem);
-				//enable nvg
-				if (__instance.ContainedItem.GetItemComponent<ResourceComponent>().Value > 0)
-				{
-					drainingBattery = true;
-				}
+			// i need to somehow find the "aaa-battery" when helmet is moved
+			//Logger.LogInfo("_on: " + (NightVision)AccessTools.Field(typeof(NightVision), "_on").GetValue(GameObject.Find("FPS Camera")));
+			//nightvision._on saves functionality, only disables color, how to access? 
 
-			}
-			else
-			{
-				Logger.LogInfo("all items: " + __instance.ParentItem.GetAllItems().Count());
-			}
-
-			nightVision.ApplySettings();
+			checkBattery();
 		}
 	}
+
 	public class NightVisionPatch : ModulePatch
 	{
-		public static NightVision nightVision;
 		protected override MethodBase GetTargetMethod()
 		{
 			return typeof(NightVision).GetMethod(nameof(NightVision.ApplySettings));
@@ -71,45 +110,49 @@ namespace BatterySystem
 		{
 			if (__instance.name == "FPS Camera" && BatterySystemPlugin.gameWorld != null)
 			{
-				nightVision = __instance;
-				//TextureMask = FPS Camera
-				//__instance.GetComponent<TogglableComponent>().Toggle(); maybe with this we can on/off?
-				Logger.LogInfo("--- BATTERYSYSTEM ---");
-				Logger.LogInfo($"At: {Time.time}s");
-				Logger.LogInfo("Item: " + __instance.GetComponent<Item>() );
-
-				if (__instance.On && BatterySystemPatch.drainingBattery) //enable nvg
-				{
-					Logger.LogInfo("Using Color " + BatterySystemPlugin.nvgDefaultColor[BatterySystemPatch.batterySlot.ParentItem.TemplateId] + "for item " + BatterySystemPatch.batterySlot.ParentItem);
-					__instance.Color = BatterySystemPlugin.nvgDefaultColor[BatterySystemPatch.batterySlot.ParentItem.TemplateId];
-				}
-				else //disable
-				{
-					__instance.Color = Color.black;
-				}
+				//InventoryControllerClass temp = (InventoryControllerClass)AccessTools.Field(typeof(Player), "_inventoryController").GetValue(BatterySystemPlugin.gameWorld.MainPlayer);
+				//temp.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear).ApplyContainedItem();
 			}
 		}
 	}
-	/*public class ForceSwitchPatch : ModulePatch
-	{
-		protected override MethodBase GetTargetMethod()
-		{
-			return typeof(PlayerCameraController).GetMethod("method_4", BindingFlags.Instance | BindingFlags.NonPublic); // nvg toggle button pressed
-		}
+	/*
+	//TextureMask = FPS Camera
+	//__instance.GetComponent<TogglableComponent>().Toggle(); maybe with this we can on/off?
+	Logger.LogInfo("--- BATTERYSYSTEM : NVG ---");
+	Logger.LogInfo($"At: {Time.time}s");
 
-		[PatchPostfix]
-		static void Postfix(ref PlayerCameraController __instance)
-		{
-			NightVision nightVision = __instance.GetComponent<NightVision>();
-			Logger.LogInfo("--- BATTERYSYSTEM ---");
-			Logger.LogInfo("Method4 at" + Time.time);
-			if (__instance.Camera.name == "FPS Camera")
-			{
-				Logger.LogInfo("passed");
-				// call nvg-slot.applyitems();
-				//nightVision.StartSwitch(true);
-				//nightVision.enabled = false;
-			}
-		}
-	}*/
+	if (__instance.On && BatterySystemPatch.drainingBattery) //enable nvg
+	{
+		Logger.LogInfo("Using Color " + BatterySystemPlugin.nvgDefaultColor[BatterySystemPatch.batterySlot.ParentItem.TemplateId] + "for item " + BatterySystemPatch.batterySlot.ParentItem);
+		__instance.Color = BatterySystemPlugin.nvgDefaultColor[BatterySystemPatch.batterySlot.ParentItem.TemplateId];
+	}
+	else //disable
+	{
+		__instance.Color = Color.black;
+	}
+}
+}
+}
+/*public class ForceSwitchPatch : ModulePatch
+{
+protected override MethodBase GetTargetMethod()
+{
+return typeof(PlayerCameraController).GetMethod("method_4", BindingFlags.Instance | BindingFlags.NonPublic); // nvg toggle button pressed
+}
+
+[PatchPostfix]
+static void Postfix(ref PlayerCameraController __instance)
+{
+NightVision nightVision = __instance.GetComponent<NightVision>();
+Logger.LogInfo("--- BATTERYSYSTEM ---");
+Logger.LogInfo("Method4 at" + Time.time);
+if (__instance.Camera.name == "FPS Camera")
+{
+	Logger.LogInfo("passed");
+	// call nvg-slot.applyitems();
+	//nightVision.StartSwitch(true);
+	//nightVision.enabled = false;
+}
+}
+}*/
 }

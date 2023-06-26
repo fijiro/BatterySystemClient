@@ -17,7 +17,7 @@ namespace BatterySystem.Configs
 				new ConfigurationManagerAttributes { IsAdvanced = false, Order = 100 })); 
 			DrainMultiplier = Config.Bind(configSettings, "Battery Drain Multiplier", 1f,
 				new ConfigDescription("Adjust the drain multiplier when nvg is on. By default a battery lasts an hour.",
-				new AcceptableValueRange<float>(0, 5),
+				new AcceptableValueRange<float>(0f, 5f),
 				new ConfigurationManagerAttributes { IsAdvanced = false, Order = 0 }));
 
 		}

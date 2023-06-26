@@ -28,7 +28,7 @@ namespace BatterySystem
 		{
 			BatterySystemConfig.Init(Config);
 			new BatterySystemPatch().Enable();
-			new NightVisionPatch().Enable();
+			//new NightVisionPatch().Enable();
 			//new ForceSwitchPatch().Enable();
 			//update dictionary with values
 			//foreach (ItemTemplate template in ItemTemplates)
@@ -52,10 +52,11 @@ namespace BatterySystem
 		{
 			if (Time.time > cooldown)
 			{
+				cooldown = Time.time + 5f;
 				if (!BatterySystemConfig.EnableMod.Value) return;
 				gameWorld = Singleton<GameWorld>.Instance;
 				if (gameWorld == null || gameWorld.MainPlayer == null) return;
-				BatterySystemPatch.checkBattery();
+				BatterySystemPatch.CheckBattery();
 				if (BatterySystemPatch.drainingBattery)
 				{
 					cooldown = (int)Time.time + 2.5f;

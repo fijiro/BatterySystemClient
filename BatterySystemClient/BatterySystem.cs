@@ -14,6 +14,9 @@ using EFT.CameraControl;
 using EFT.Interactive;
 using System;
 using Aki.Reflection.Utils;
+using BepInEx.Configuration;
+using EFT.Hideout;
+using System.Security.Policy;
 
 namespace BatterySystem
 {
@@ -23,33 +26,95 @@ namespace BatterySystem
 		private static Item batteryInNVG = null;
 		public static ResourceComponent batteryResource = null;
 
+		//private static MethodInfo setStateMethod = AccessTools.Method(typeof(NightVision), "method_1");
+		//private static PropertyInfo nvgOnProperty = null;
+		//private static bool nightVision_On = false;
 		private static InventoryControllerClass inventoryController = null;
 		private static Slot headWearSlot = null;
 		public static NightVisionComponent headWearNVG = null;
-		public static NightVision nightVision = null;
-		//private static bool nightVision_on = false;
+		//private static NightVision nightVision = null;
+		//private static bool nightVision_On = false;
 
-		public static void checkBattery()
+		public static void CheckBattery()
 		{
+			//if (BatterySystemConfig.EnableLogs.Value)
+			{
+				Logger.LogInfo("--- BATTERYSYSTEM ---");
+				Logger.LogInfo("At: " + Time.time);
+			}
+			if (!BatterySystemConfig.EnableMod.Value || Singleton<GameWorld>.Instance == null) //uhh if disabled
+			{
+				drainingBattery = false; // if the headwear is removed, stop draining battery and return to skip following statements
+				return;
+			}
+
+			inventoryController = (InventoryControllerClass)AccessTools.Field(typeof(Player), "_inventoryController").GetValue(Singleton<GameWorld>.Instance.MainPlayer);
+			headWearSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
+			if (headWearSlot.Items.Count() == 0)
+			{
+				drainingBattery = false; // if the headwear is removed, stop draining battery and return to skip following statements
+				return;
+			}
+
+			headWearNVG = headWearSlot.ContainedItem.GetItemComponentsInChildren<NightVisionComponent>().FirstOrDefault();
+
+			//if (BatterySystemConfig.EnableLogs.Value)
+			{
+				Logger.LogInfo(headWearNVG);
+				Logger.LogInfo(headWearNVG.Item);
+				Logger.LogInfo("NVG: " + CameraClass.Instance.NightVision);
+			}
+
+			batteryInNVG = headWearSlot.ContainedItem.GetAllItems().FirstOrDefault(item => item.TemplateId == "aaa-battery");
+			if (batteryInNVG == null)
+			{
+				//if (BatterySystemConfig.EnableLogs.Value)
+				Logger.LogInfo(headWearNVG.Item);
+				Logger.LogInfo("Battery in NVG is null!");
+				batteryResource = null;
+			}
+			batteryResource = headWearNVG.Item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault();
+
+			//if (BatterySystemConfig.EnableLogs.Value)
+			{
+				Logger.LogInfo("Battery in NVG: " + batteryInNVG);
+				Logger.LogInfo("Battery Resource: " + batteryResource);
+			}
+
+			//if (BatterySystemConfig.EnableLogs.Value)
+			Logger.LogInfo("Checking battery at " + Time.time);
+			//CameraClass.Instance.NightVision.ApplySettings();
 			if (batteryResource != null) // NVG has battery installed and headwear is equipped
 			{
-				Logger.LogInfo("Contains item with resource: " + batteryResource.Item);
-				if (batteryResource.Value > 0 && nightVision.On) //enable nvg if has battery
+				if (batteryResource.Value > 0) //&& NightVisionPatch.nightVision.On enable nvg if has battery
 				{
-					nightVision.Color = headWearNVG.Template.Color;
+					//nightVision.Color = headWearNVG.Template.Color;
+					//nightVision_On = true;
+					Logger.LogInfo($"Battery {batteryResource.Value}, NVG On");
+					//setStateMethod.Invoke(CameraClass.Instance.NightVision, new object[] { true });
 					drainingBattery = true;
 				}
 				else
 				{
-					nightVision.Color = Color.black;
+					Logger.LogInfo($"Battery {batteryResource.Value}, NVG Off");
+					//nightVision_On = false;
+					//nightVision.Color = Color.black;
+					//setStateMethod.Invoke(CameraClass.Instance.NightVision, new object[] { false });
 					drainingBattery = false;
+					CameraClass.Instance.NightVision.ApplySettings();
 				}
 			}
-			else if (nightVision != null) {
-			
-				nightVision.Color = Color.black;
+			else {
+				Logger.LogInfo($"Battery null, NVG not null, NVG Off");
+				//setStateMethod.Invoke(CameraClass.Instance.NightVision, new object[] { false });
+				//nightVision_On = false;
+				//nightVision.Color = Color.black;
 				drainingBattery = false;
 			}
+			FieldInfo nvgOnProperty = AccessTools.Field(typeof(NightVision), "_on");
+			Logger.LogInfo("Settingvalue!");
+			nvgOnProperty.SetValue(CameraClass.Instance.NightVision, drainingBattery);
+			Logger.LogInfo("Setvalue!");
 		}
 
 		protected override MethodBase GetTargetMethod()
@@ -58,71 +123,24 @@ namespace BatterySystem
 		}
 
 		[PatchPostfix]
-		static void Postfix(ref Slot __instance)
+		static void Postfix()
 		{
-
-			Logger.LogInfo("--- BATTERYSYSTEM ---");
-			Logger.LogInfo("At: " + Time.time);
-			Logger.LogInfo(__instance);
-
-			if (!BatterySystemConfig.EnableMod.Value || BatterySystemPlugin.gameWorld == null) //uhh if disabled
-			{
-				drainingBattery = false; // if the headwear is removed, stop draining battery and return to skip following statements
-				return;
-			}
-
-			inventoryController = (InventoryControllerClass)AccessTools.Field(typeof(Player), "_inventoryController").GetValue(BatterySystemPlugin.gameWorld.MainPlayer);
-			headWearSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
-
-			if (headWearSlot.Items.Count() == 0)
-			{
-				drainingBattery = false; // if the headwear is removed, stop draining battery and return to skip following statements
-				return;
-			}
-
-			headWearNVG = headWearSlot.ContainedItem.GetItemComponentsInChildren<NightVisionComponent>().FirstOrDefault();
-			Logger.LogInfo(headWearNVG);
-			Logger.LogInfo(headWearNVG.Item);
-
-			nightVision = GameObject.Find("FPS Camera").GetComponent<NightVision>();
-			Logger.LogInfo("NVG: " + nightVision);
-
-			batteryInNVG = headWearSlot.ContainedItem.GetAllItems().FirstOrDefault(item => item.TemplateId == "aaa-battery");
-			if(batteryInNVG == null)
-			{
-				batteryResource = null;
-				Logger.LogInfo("Battery in NVG is null!");
-				drainingBattery = false;
-				return;
-			}
-			Logger.LogInfo("Battery in NVG: " + batteryInNVG);
-
-			batteryResource = headWearNVG.Item.GetItemComponentsInChildren<ResourceComponent>(false).First();
-			Logger.LogInfo("Battery Resource: " + batteryResource);
-
-			// i need to somehow find the "aaa-battery" when helmet is moved
-			//Logger.LogInfo("_on: " + (NightVision)AccessTools.Field(typeof(NightVision), "_on").GetValue(GameObject.Find("FPS Camera")));
-			//nightvision._on saves functionality, only disables color, how to access? 
-
-			checkBattery();
+			CheckBattery();
 		}
 	}
-
+	/*
 	public class NightVisionPatch : ModulePatch
 	{
+		public static NightVision nightVision = null;
 		protected override MethodBase GetTargetMethod()
 		{
-			return typeof(NightVision).GetMethod(nameof(NightVision.ApplySettings));
+			return typeof(NightVision).GetMethod("method_1", BindingFlags.Instance | BindingFlags.NonPublic);
 		}
 
 		[PatchPostfix]
-		static void Postfix(ref NightVision __instance)
+		static void Postfix(ref bool __instance)
 		{
-			if (__instance.name == "FPS Camera" && BatterySystemPlugin.gameWorld != null)
-			{
-				InventoryControllerClass temp = (InventoryControllerClass)AccessTools.Field(typeof(Player), "_inventoryController").GetValue(BatterySystemPlugin.gameWorld.MainPlayer);
-				temp.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear).ApplyContainedItem();
-			}
+
 		}
 	}
 	/*

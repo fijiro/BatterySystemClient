@@ -55,19 +55,18 @@ namespace BatterySystem
 				if (!BatterySystemConfig.EnableMod.Value) return;
 				gameWorld = Singleton<GameWorld>.Instance;
 				if (gameWorld == null || gameWorld.MainPlayer == null) return;
-				return; //removethis
-
 				BatterySystemPatch.checkBattery();
 				if (BatterySystemPatch.drainingBattery)
 				{
 					cooldown = (int)Time.time + 2.5f;
-					BatterySystemPatch.batteryResource.Value -= 1 / 14.4f * BatterySystemConfig.DrainMultiplier.Value * itemDrainMultiplier[BatterySystemPatch.batteryInNVG.Parent.Item.TemplateId]; //Default battery lasts 1 hr * configmulti * itemmulti, itemmulti was dev_raccoon's idea!
+					BatterySystemPatch.batteryResource.Value -= 1 / 14.4f * BatterySystemConfig.DrainMultiplier.Value * itemDrainMultiplier[BatterySystemPatch.headWearNVG.Item.TemplateId]; //Default battery lasts 1 hr * configmulti * itemmulti, itemmulti was dev_raccoon's idea!
 					return;
 				}
 				cooldown++;
 			}
 			//Item itemInHands = inventoryControllerClass.ItemInHands;
 			//List<string> equippedTpl = inventoryControllerClass.Inventory.EquippedInSlotsTemplateIds;
+
 		}
 		/* Credit to Nexus and Fontaine for showing me this!
 		private static IEnumerator LowerThermalBattery(Player player)

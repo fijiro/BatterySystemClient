@@ -9,13 +9,13 @@ namespace BatterySystem.Configs
 
 		public static void Init(ConfigFile Config)
 		{
-			string configSettings = "General Settings";
+			string generalSettings = "General Settings";
 
-			EnableMod = Config.Bind(configSettings, "Enable Mod", true,
+			EnableMod = Config.Bind(generalSettings, "Enable Mod", true,
 				new ConfigDescription("Enable or disable the mod.",
 				null,
 				new ConfigurationManagerAttributes { IsAdvanced = false, Order = 100 })); 
-			DrainMultiplier = Config.Bind(configSettings, "Battery Drain Multiplier", 1f,
+			DrainMultiplier = Config.Bind(generalSettings, "Battery Drain Multiplier", 1f,
 				new ConfigDescription("Adjust the drain multiplier when nvg is on. By default a battery lasts an hour.",
 				new AcceptableValueRange<float>(0f, 5f),
 				new ConfigurationManagerAttributes { IsAdvanced = false, Order = 0 }));

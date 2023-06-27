@@ -1,73 +1,59 @@
 ﻿using BepInEx;
-using BatterySystem.Configs;
-using EFT;
-using EFT.InventoryLogic;
+using System.Collections.Generic;
 using Comfort.Common;
 using UnityEngine;
-using System.Collections.Generic;
-using HarmonyLib;
-using System.Collections;
-using EFT.CameraControl;
-using BSG.CameraEffects;
-using System.Net;
+using EFT;
+using BatterySystem.Configs;
 
 namespace BatterySystem
 {
-	/*TODO: 
-	 * fix battery not detected when loading in, defaulting to off!
-	 * New model for battery
+   /*TODO: 
+    * Add as barter from therapist
+	* Apply to Thermals aswell
+	* When Toggling off, color is set back to normal.
+	* Sound when toggling battery runs out or is removed or added
+	* New model for battery
+	* stackable batteries
+	* battery recharger - idea by Props
+	* battery craft - idea by Drakia
 	*/
 	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.0.0")]
 	public class BatterySystemPlugin : BaseUnityPlugin
 	{
 		public static GameWorld gameWorld;
-		private static float cooldown = 2.5f;
-		//public static Dictionary<string, Color> nvgDefaultColor = new Dictionary<string, Color>();
+		public static float cooldown = 2.5f;
 		public static Dictionary<string, float> itemDrainMultiplier = new Dictionary<string, float>();
 		void Awake()
 		{
 			BatterySystemConfig.Init(Config);
 			new BatterySystemPatch().Enable();
-			//new NightVisionPatch().Enable();
-			//new ForceSwitchPatch().Enable();
+			new NightVisionPatch().Enable();
 			//update dictionary with values
 			//foreach (ItemTemplate template in ItemTemplates)
 			{
-				//nvgDefaultColor.Add("5c0696830db834001d23f5da", new Color(0, 255 / 255f, 32 / 255f, 1)); // PNV-10T Night Vision Goggles
-				itemDrainMultiplier.Add("5c0696830db834001d23f5da", 1f);
-
-				//nvgDefaultColor.Add("5c0558060db834001b735271", new Color(83 / 255f, 255 / 255f, 69 / 255f, 1)); // GPNVG-18 Night Vision goggles
-				itemDrainMultiplier.Add("5c0558060db834001b735271", 2f);
-
-				//nvgDefaultColor.Add("5c066e3a0db834001b7353f0", new Color(0, 255 / 255f, 243 / 255f, 1)); // Armasight N-15 Night Vision Goggles
-				itemDrainMultiplier.Add("5c066e3a0db834001b7353f0", 1f);
-
-				//nvgDefaultColor.Add("57235b6f24597759bf5a30f1", new Color(183 / 255f, 255 / 255f, 86 / 255f, 1)); // AN/PVS-14 Night Vision Monocular
-				itemDrainMultiplier.Add("57235b6f24597759bf5a30f1", 0.5f);
-
-				//nvgDefaultColor.Add("5c110624d174af029e69734c", new Color(0, 255, 32)); // T-7 Thermal Goggles with a Night Vision mount
+				itemDrainMultiplier.Add("5c0696830db834001d23f5da", 1f); // PNV-10T Night Vision Goggles
+				itemDrainMultiplier.Add("5c0558060db834001b735271", 2f); // GPNVG-18 Night Vision goggles
+				itemDrainMultiplier.Add("5c066e3a0db834001b7353f0", 1f); // Armasight N-15 Night Vision Goggles
+				itemDrainMultiplier.Add("57235b6f24597759bf5a30f1", 0.5f); // AN/PVS-14 Night Vision Monocular
+				//itemDrainMultiplier.Add("5c110624d174af029e69734c", 4f); // T-7 Thermal Goggles with a Night Vision mount
 			}
 		}
 		void Update() // battery is drained in Update() and applied
 		{
-			if (Time.time > cooldown)
+			if (Time.time > cooldown) //&& BatterySystemConfig.EnableMod.Value)
 			{
-				cooldown = Time.time + 5f;
-				if (!BatterySystemConfig.EnableMod.Value) return;
+				cooldown = Time.time + 1;
 				gameWorld = Singleton<GameWorld>.Instance;
 				if (gameWorld == null || gameWorld.MainPlayer == null) return;
-				BatterySystemPatch.CheckBattery();
+				BatterySystemPatch.CheckIfDraining();
 				if (BatterySystemPatch.drainingBattery)
 				{
-					cooldown = (int)Time.time + 2.5f;
-					BatterySystemPatch.batteryResource.Value -= 1 / 14.4f * BatterySystemConfig.DrainMultiplier.Value * itemDrainMultiplier[BatterySystemPatch.headWearNVG.Item.TemplateId]; //Default battery lasts 1 hr * configmulti * itemmulti, itemmulti was dev_raccoon's idea!
-					return;
+					Mathf.Clamp(BatterySystemPatch.batteryResource.Value -= 1 / 36 * itemDrainMultiplier[BatterySystemPatch.headWearNVG.Item.TemplateId], 0, 100);// * BatterySystemConfig.DrainMultiplier.Value //Default battery lasts 1 hr * configmulti * itemmulti, itemmulti was dev_raccoon's idea!
 				}
-				cooldown++;
+				else cooldown = float.PositiveInfinity; // doesn't run unless needed
 			}
 			//Item itemInHands = inventoryControllerClass.ItemInHands;
 			//List<string> equippedTpl = inventoryControllerClass.Inventory.EquippedInSlotsTemplateIds;
-
 		}
 		/* Credit to Nexus and Fontaine for showing me this!
 		private static IEnumerator LowerThermalBattery(Player player)

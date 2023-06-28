@@ -83,7 +83,7 @@ namespace BatterySystem
 		[PatchPostfix]
 		static void Postfix(ref Slot __instance) // limit to only player
 		{
-			if (BatterySystemConfig.EnableMod.Value || Singleton<GameWorld>.Instance != null)
+			if (BatterySystemConfig.EnableMod.Value && BatterySystemPlugin.gameWorld != null)
 			{
 				if(BatterySystemConfig.EnableLogs.Value)
 					Logger.LogInfo("APPLYING CONTAINED ITEM AT: " + Time.time);
@@ -103,7 +103,7 @@ namespace BatterySystem
 		[PatchPostfix]
 		static void Postfix(ref NightVision __instance)
 		{
-			if (__instance.name == "FPS Camera" && BatterySystemConfig.EnableMod.Value && Singleton<GameWorld>.Instance != null)   
+			if (__instance.name == "FPS Camera" && BatterySystemConfig.EnableMod.Value && BatterySystemPlugin.gameWorld != null)   
 				// if switching on with no battery or equipping with nvg on, turn off
 			{
 				if(BatterySystemConfig.EnableLogs.Value)

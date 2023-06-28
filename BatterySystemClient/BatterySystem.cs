@@ -86,7 +86,7 @@ namespace BatterySystem
 			if (BatterySystemConfig.EnableMod.Value || Singleton<GameWorld>.Instance != null)
 			{
 				if(BatterySystemConfig.EnableLogs.Value)
-					Logger.LogInfo("APPLYING CONTAINED ITEM AT: " + Time.time + __instance?.ParentItem?.Name);
+					Logger.LogInfo("APPLYING CONTAINED ITEM AT: " + Time.time);
 				SetNvgComponents();
 				BatterySystemPlugin.cooldown = Time.time + 0.01f;
 			}
@@ -103,7 +103,8 @@ namespace BatterySystem
 		[PatchPostfix]
 		static void Postfix(ref NightVision __instance)
 		{
-			if (__instance.name == "FPS Camera" && BatterySystemConfig.EnableMod.Value)   // if switching on with no battery or equipping with nvg on, turn off
+			if (__instance.name == "FPS Camera" && BatterySystemConfig.EnableMod.Value && Singleton<GameWorld>.Instance != null)   
+				// if switching on with no battery or equipping with nvg on, turn off
 			{
 				if(BatterySystemConfig.EnableLogs.Value)
 					Logger.LogInfo("APPLYING NVG SETTINGS AT: " + Time.time);

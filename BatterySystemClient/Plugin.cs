@@ -8,14 +8,12 @@ using BatterySystem.Configs;
 namespace BatterySystem
 {
    /*TODO: 
-    * Add as barter from therapist
+    * equipping and removing headwear gives infinite nvg
+    * switch to coroutines
 	* Apply to Thermals aswell
-	* When Toggling off, color is set back to normal.
 	* Sound when toggling battery runs out or is removed or added
 	* New model for battery
-	* stackable batteries
 	* battery recharger - idea by Props
-	* battery craft - idea by Drakia
 	*/
 	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.0.0")]
 	public class BatterySystemPlugin : BaseUnityPlugin

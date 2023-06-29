@@ -4,6 +4,8 @@ using Comfort.Common;
 using UnityEngine;
 using EFT;
 using BatterySystem.Configs;
+using EFT.InventoryLogic;
+using System.Collections;
 
 namespace BatterySystem
 {
@@ -14,53 +16,71 @@ namespace BatterySystem
 	 * Sound when toggling battery runs out or is removed or added
 	 * New model for battery
 	 * battery recharger - idea by Props
+	 * make batteries uninsurable, because duhW
 	 */
-	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.0.0")]
+	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.1.0")]
+	[BepInDependency("com.spt-aki.core", "3.5.7")]
 	public class BatterySystemPlugin : BaseUnityPlugin
 	{
 		public static GameWorld gameWorld;
-		public static float cooldown = 2.5f;
-		public static Dictionary<string, float> nvgDrainMultiplier = new Dictionary<string, float>();
+		public static float headWearCooldown = 2.5f;
+		public static Dictionary<string, float> headWearDrainMultiplier = new Dictionary<string, float>();
+		public static Dictionary<ResourceComponent, bool> batteryDictionary = new Dictionary<ResourceComponent, bool>();
+		//resource drain all batteries that are on // using dictionary to help and sync draining batteries
 		void Awake()
 		{
 			BatterySystemConfig.Init(Config);
-			new BatterySystemPatch().Enable();
+			new PlayerInitPatch().Enable();
+			new HeadWearDevicePatch().Enable();
+			new SightDevicePatch().Enable();
 			new NightVisionPatch().Enable();
 			//update dictionary with values
 			//foreach (ItemTemplate template in ItemTemplates)
 			{
-				nvgDrainMultiplier.Add("5c0696830db834001d23f5da", 1f); // PNV-10T Night Vision Goggles
-				nvgDrainMultiplier.Add("5c0558060db834001b735271", 2f); // GPNVG-18 Night Vision goggles
-				nvgDrainMultiplier.Add("5c066e3a0db834001b7353f0", 1f); // Armasight N-15 Night Vision Goggles
-				nvgDrainMultiplier.Add("57235b6f24597759bf5a30f1", 0.5f); // AN/PVS-14 Night Vision Monocular
-
-				//itemDrainMultiplier.Add("5c110624d174af029e69734c", 4f); // T-7 Thermal Goggles with a Night Vision mount
+				headWearDrainMultiplier.Add("5c0696830db834001d23f5da", 1f); // PNV-10T Night Vision Goggles, AA Battery
+				headWearDrainMultiplier.Add("5c0558060db834001b735271", 2f); // GPNVG-18 Night Vision goggles, CR123 battery pack
+				headWearDrainMultiplier.Add("5c066e3a0db834001b7353f0", 1f); // Armasight N-15 Night Vision Goggles, single CR123A lithium battery
+				headWearDrainMultiplier.Add("57235b6f24597759bf5a30f1", 0.5f); // AN/PVS-14 Night Vision Monocular, AA Battery
+				headWearDrainMultiplier.Add("5c110624d174af029e69734c", 3f); // T-7 Thermal Goggles with a Night Vision mount, CR123
 			}
 		}
 		void Update() // battery is drained in Update() and applied
 		{
-			if (Time.time > cooldown && BatterySystemConfig.EnableMod.Value)
+			if (Time.time > headWearCooldown && BatterySystemConfig.EnableMod.Value)
 			{
-				cooldown = Time.time + 1;
+				headWearCooldown = Time.time + 1;
 				gameWorld = Singleton<GameWorld>.Instance;
 				if (gameWorld == null || gameWorld.MainPlayer == null) return;
 
-				BatterySystemPatch.CheckIfDraining();
+				HeadWearDevicePatch.CheckHeadWearIfDraining();
 
-				if (CameraClass.Instance.NightVision.InProcessSwitching) cooldown = Time.time + 0.02f; // workaround, fix this l8r
-				else if (BatterySystemPatch.drainingBattery)
+
+				if (CameraClass.Instance.NightVision.InProcessSwitching) headWearCooldown = Time.time + 0.02f; // workaround, fix this l8r
+				else if (HeadWearDevicePatch.drainingBattery)
 				{
-					Mathf.Clamp(BatterySystemPatch.batteryResource.Value -= 1 / 36f
-						* BatterySystemConfig.DrainMultiplier.Value
-						* nvgDrainMultiplier[BatterySystemPatch.headWearNVG.Item.TemplateId], 0, 100);
-					//Default battery lasts 1 hr * configmulti * itemmulti, itemmulti was dev_raccoon's idea!
+					DrainBatteries();
 				}
-				else cooldown = 2f; // doesn't run unless needed
-														//currently if a bots equipment changes, then cooldown is reset.
+				else headWearCooldown = 5; // doesn't run unless needed
+										   //currently if a bots equipment changes, then cooldown is reset.
 			}
 			//Item itemInHands = inventoryControllerClass.ItemInHands;
 			//List<string> equippedTpl = inventoryControllerClass.Inventory.EquippedInSlotsTemplateIds;
 		}
+		private static void DrainBatteries()
+		{
+			//foreach (ResourceComponent resourceComponent in batteryDictionary.Keys)
+			{
+				//if (batteryDictionary[resourceComponent])
+				{
+					Mathf.Clamp(HeadWearDevicePatch.batteryResource.Value -= 1 / 36f
+						* BatterySystemConfig.DrainMultiplier.Value
+						* headWearDrainMultiplier[HeadWearDevicePatch.batteryResource.Item.Parent.Item.TemplateId], 0, 100);
+					//Default battery lasts 1 hr * configmulti * itemmulti, itemmulti was dev_raccoon's idea!
+				}
+			}
+			return;
+		}
+
 		/* Credit to Nexus and Fontaine for showing me this!
 		private static IEnumerator LowerThermalBattery(Player player)
 		{

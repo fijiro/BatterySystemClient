@@ -8,96 +8,148 @@ using EFT;
 using EFT.InventoryLogic;
 using BSG.CameraEffects;
 using BatterySystem.Configs;
+using System.Threading.Tasks;
 
 namespace BatterySystem
 {
-	public class BatterySystemPatch : ModulePatch
+	public class PlayerInitPatch : ModulePatch
+	{
+		
+		protected override MethodBase GetTargetMethod()
+		{
+			return typeof(Player).GetMethod("Init", BindingFlags.NonPublic | BindingFlags.Instance);
+		}
+
+		[PatchPostfix]
+		private static async void Postfix(Task __result)
+		{
+			await __result;
+			HeadWearDevicePatch.SetHeadWearComponents();
+		}
+	}
+
+	public class HeadWearDevicePatch : ModulePatch
 	{
 		private static FieldInfo nvgOnField = null;
+		private static FieldInfo thermalOnField = null;
 		private static FieldInfo inventoryField = null;
 		private static InventoryControllerClass inventoryController = null;
 
 		private static Item headWearItem = null;
-		public static NightVisionComponent headWearNVG = null;
-		private static Item batteryInNVG = null;
+		private static NightVisionComponent headWearNVG = null;
+		private static ThermalVisionComponent headWearThermal = null;
+		private static Item batteryInHeadWear = null;
 
 		public static ResourceComponent batteryResource = null;
 		public static bool drainingBattery = false;
 
-		public static void SetNvgComponents()
+		public static void SetHeadWearComponents()
 		{
 			inventoryController = (InventoryControllerClass)inventoryField.GetValue(Singleton<GameWorld>.Instance.MainPlayer); //Player Inventory
 			headWearItem = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear).Items?.FirstOrDefault(); // default null else headwear
 			headWearNVG = headWearItem?.GetItemComponentsInChildren<NightVisionComponent>().FirstOrDefault(); //default null else nvg item
-			batteryInNVG = headWearNVG?.Item.GetAllItems().FirstOrDefault(item => item.TemplateId == "aaa-battery"); //default null else battery, useless?
-			batteryResource = batteryInNVG?.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault(); //default null else resource
+			headWearThermal = headWearItem?.GetItemComponentsInChildren<ThermalVisionComponent>().FirstOrDefault(); //default null else thermal item
+			batteryInHeadWear = headWearItem?.GetAllItems().FirstOrDefault(item => item.GetItemComponent<ResourceComponent>() != null); //default null else battery, useless?
+			if ((batteryResource = batteryInHeadWear?.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault()) != null)
+			{ //default null else resource
 
+				// ERROR //////////////////////////////////////////////////////////////
+				Logger.LogInfo("Checking db."); // if battery is removed, it still stays in the db! remove this!
+				//if (!BatterySystemPlugin.batteryDictionary.TryGetValue(batteryResource, out drainingBattery))
+				//{
+				//	BatterySystemPlugin.batteryDictionary.Add(batteryResource, drainingBattery);
+				//}
+			}
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
 				Logger.LogInfo("--- BATTERYSYSTEM ---");
 				Logger.LogInfo("At: " + Time.time);
 				Logger.LogInfo("headWearItem: " + headWearItem);
 				Logger.LogInfo("headWearNVG: " + headWearNVG);
-				Logger.LogInfo("Battery in NVG: " + batteryInNVG);
+				Logger.LogInfo("headWearThermal: " + headWearThermal);
+				Logger.LogInfo("Battery in HeadWear: " + batteryInHeadWear);
 				Logger.LogInfo("Battery Resource: " + batteryResource);
-				Logger.LogInfo("NVG: " + CameraClass.Instance.NightVision);
 			}
 		}
 
-		public static void CheckIfDraining()
+		public static void CheckHeadWearIfDraining()
 		{
 			if (BatterySystemConfig.EnableLogs.Value)
-				Logger.LogInfo("--- Checking battery at " + Time.time + " ---");
+				Logger.LogInfo("--- Checking HeadWear battery at " + Time.time + " ---");
 
-			if (CameraClass.Instance.NightVision.InProcessSwitching) // when switching, nvg is off.
-			{
-				drainingBattery = false;
-			}
 			else if ((batteryResource != null ? (batteryResource.Value > 0 ? true : false) : false)
-				&& headWearNVG.Togglable.On) // NVG has battery installed and headwear is equipped
+				&& (headWearNVG == null ? !CameraClass.Instance.ThermalVision.InProcessSwitching : !CameraClass.Instance.NightVision.InProcessSwitching)
+				&& headWearNVG.Togglable.On)
+				// NVG has battery installed and headwear isn't switching and is on
 			{
-				//CameraClass.Instance.NightVision.Color = headWearNVG.Template.Color;
 				drainingBattery = true;
 			}
 			else
 			{
-				//CameraClass.Instance.NightVision.Color = Color.black;
 				drainingBattery = false;
 			}
 
-			if(BatterySystemConfig.EnableLogs.Value)
-				Logger.LogInfo("Setting NVG_on: " + drainingBattery);
+			BatterySystemPlugin.batteryDictionary[batteryResource] = drainingBattery;
 
-			nvgOnField.SetValue(CameraClass.Instance.NightVision, drainingBattery);
+			if (BatterySystemConfig.EnableLogs.Value)
+				Logger.LogInfo("Setting HeadWear_on: " + drainingBattery);
+
+			if(headWearNVG == null)
+				thermalOnField.SetValue(CameraClass.Instance.ThermalVision, drainingBattery);
+			else
+				nvgOnField.SetValue(CameraClass.Instance.NightVision, drainingBattery);
 		}
-
 
 		protected override MethodBase GetTargetMethod()
 		{
 			nvgOnField = AccessTools.Field(typeof(NightVision), "_on");
+			thermalOnField = AccessTools.Field(typeof(ThermalVision), "_on");
 			inventoryField = AccessTools.Field(typeof(Player), "_inventoryController");
 
 			return typeof(Slot).GetMethod(nameof(Slot.ApplyContainedItem));
 		}
 
 		[PatchPostfix]
-		static void Postfix(ref Slot __instance) // limit to only player
+		static void Postfix(ref Slot __instance) // limit to only player asap
 		{
 			if (BatterySystemConfig.EnableMod.Value && BatterySystemPlugin.gameWorld != null)
 			{
-				if(BatterySystemConfig.EnableLogs.Value)
+
+				if (BatterySystemConfig.EnableLogs.Value) 
+				{
 					Logger.LogInfo("APPLYING CONTAINED ITEM AT: " + Time.time);
-				SetNvgComponents();
-				BatterySystemPlugin.cooldown = Time.time + 0.01f;
+					Logger.LogInfo("Slot parent: " + __instance.ParentItem);
+
+				}
+				if (headWearItem != null && __instance.ParentItem.ParentRecursiveCheck(headWearItem))
+				{
+					Logger.LogInfo("Slot is child of headwear!");
+				}
+				SetHeadWearComponents();
+				BatterySystemPlugin.headWearCooldown = Time.time + 0.1f;
 			}
 		}
 	}
+	public class SightDevicePatch : ModulePatch
+	{
+		private static SightComponent sightComponent = null;
 
+		protected override MethodBase GetTargetMethod()
+		{
+			return typeof(SightComponent).GetMethod(nameof(SightComponent.SetScopeMode));
+		}
+
+		[PatchPostfix]
+		static void Postfix(ref SightComponent __instance)
+		{
+			sightComponent = __instance;
+		}
+	}
 	public class NightVisionPatch : ModulePatch
 	{
 		protected override MethodBase GetTargetMethod()
 		{
-			return typeof(NightVision).GetMethod(nameof(NightVision.ApplySettings));
+			return typeof(NightVision).GetMethod(nameof(NightVision.StartSwitch));
 		}
 
 		[PatchPostfix]
@@ -108,8 +160,8 @@ namespace BatterySystem
 			{
 				if(BatterySystemConfig.EnableLogs.Value)
 					Logger.LogInfo("APPLYING NVG SETTINGS AT: " + Time.time);
-				BatterySystemPatch.SetNvgComponents();
-				BatterySystemPlugin.cooldown = Time.time + 0.01f;
+				HeadWearDevicePatch.SetHeadWearComponents();
+				BatterySystemPlugin.headWearCooldown = Time.time + 0.1f;
 				//temp workaround kek. have to do a coroutine that triggers after !InProcessSwitching.
 			}
 		}

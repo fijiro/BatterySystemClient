@@ -1,4 +1,7 @@
 ﻿using BepInEx;
+using System.Reflection;
+using Aki.Reflection.Patching;
+using HarmonyLib;
 using System.Collections.Generic;
 using Comfort.Common;
 using UnityEngine;
@@ -6,6 +9,8 @@ using EFT;
 using BatterySystem.Configs;
 using EFT.InventoryLogic;
 using System.Collections;
+using BepInEx.Logging;
+using System.Linq;
 
 namespace BatterySystem
 {
@@ -25,15 +30,15 @@ namespace BatterySystem
 		public static GameWorld gameWorld;
 		public static float headWearCooldown = 2.5f;
 		public static Dictionary<string, float> headWearDrainMultiplier = new Dictionary<string, float>();
-		public static Dictionary<ResourceComponent, bool> batteryDictionary = new Dictionary<ResourceComponent, bool>();
+		public static Dictionary<Item, bool> batteryDictionary = new Dictionary<Item, bool>();
 		//resource drain all batteries that are on // using dictionary to help and sync draining batteries
 		void Awake()
 		{
 			BatterySystemConfig.Init(Config);
 			new PlayerInitPatch().Enable();
-			new HeadWearDevicePatch().Enable();
+			new ApplyItemPatch().Enable();
 			new SightDevicePatch().Enable();
-			new NightVisionPatch().Enable();
+			new NvgHeadWearPatch().Enable();
 			//update dictionary with values
 			//foreach (ItemTemplate template in ItemTemplates)
 			{
@@ -46,35 +51,39 @@ namespace BatterySystem
 		}
 		void Update() // battery is drained in Update() and applied
 		{
+			gameWorld = Singleton<GameWorld>.Instance;
+			if (gameWorld == null || gameWorld.MainPlayer == null) return;
+
 			if (Time.time > headWearCooldown && BatterySystemConfig.EnableMod.Value)
 			{
-				headWearCooldown = Time.time + 1;
-				gameWorld = Singleton<GameWorld>.Instance;
-				if (gameWorld == null || gameWorld.MainPlayer == null) return;
+				BatterySystem.CheckHeadWearIfDraining();
+				BatterySystem.CheckSightIfDraining();
+				DrainBatteries();
+				headWearCooldown = Time.time + 1f;
+				//if (CameraClass.Instance.NightVision.InProcessSwitching) headWearCooldown = Time.time + 0.02f; // workaround, fix this l8r
 
-				HeadWearDevicePatch.CheckHeadWearIfDraining();
-
-
-				if (CameraClass.Instance.NightVision.InProcessSwitching) headWearCooldown = Time.time + 0.02f; // workaround, fix this l8r
-				else if (HeadWearDevicePatch.drainingBattery)
-				{
-					DrainBatteries();
-				}
-				else headWearCooldown = 5; // doesn't run unless needed
-										   //currently if a bots equipment changes, then cooldown is reset.
+				// doesn't run unless needed
+				//currently if a bots equipment changes, then cooldown is reset.
 			}
 			//Item itemInHands = inventoryControllerClass.ItemInHands;
 			//List<string> equippedTpl = inventoryControllerClass.Inventory.EquippedInSlotsTemplateIds;
 		}
 		private static void DrainBatteries()
 		{
-			//foreach (ResourceComponent resourceComponent in batteryDictionary.Keys)
+			foreach (Item item in batteryDictionary.Keys)
 			{
-				//if (batteryDictionary[resourceComponent])
+				if (batteryDictionary[item]) // == true
 				{
-					Mathf.Clamp(HeadWearDevicePatch.batteryResource.Value -= 1 / 36f
-						* BatterySystemConfig.DrainMultiplier.Value
-						* headWearDrainMultiplier[HeadWearDevicePatch.batteryResource.Item.Parent.Item.TemplateId], 0, 100);
+					BatterySystem.Logger.LogInfo("Togglable: " + BatterySystem.headWearItem.GetItemComponent<TogglableComponent>().On);
+					if (BatterySystem.headWearItem != null && item.IsChildOf(BatterySystem.headWearItem) && BatterySystem.headWearItem.GetItemComponent<TogglableComponent>().On) //for headwear nvg/t-7
+						Mathf.Clamp(BatterySystem.headWearBattery.Value -= 1 / 36f
+							* BatterySystemConfig.DrainMultiplier.Value
+							* headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId], 0, 100);
+					else
+					{
+						Mathf.Clamp(item.GetItemComponentsInChildren<ResourceComponent>().First().Value -= 1 / 72f
+							* BatterySystemConfig.DrainMultiplier.Value, 0, 100); //2 hr
+					}
 					//Default battery lasts 1 hr * configmulti * itemmulti, itemmulti was dev_raccoon's idea!
 				}
 			}

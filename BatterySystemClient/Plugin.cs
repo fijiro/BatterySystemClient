@@ -47,6 +47,7 @@ namespace BatterySystem
 				headWearDrainMultiplier.Add("5c066e3a0db834001b7353f0", 1f); // Armasight N-15 Night Vision Goggles, single CR123A lithium battery
 				headWearDrainMultiplier.Add("57235b6f24597759bf5a30f1", 0.5f); // AN/PVS-14 Night Vision Monocular, AA Battery
 				headWearDrainMultiplier.Add("5c110624d174af029e69734c", 3f); // T-7 Thermal Goggles with a Night Vision mount, CR123
+				//specter uses cr2032, hhs cr123
 			}
 		}
 		void Update() // battery is drained in Update() and applied

@@ -65,13 +65,14 @@ namespace BatterySystem
 			headWearItem = PlayerInitPatch.inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear).Items?.FirstOrDefault(); // default null else headwear
 			headWearNvg = headWearItem?.GetItemComponentsInChildren<NightVisionComponent>().FirstOrDefault(); //default null else nvg item
 			headWearThermal = headWearItem?.GetItemComponentsInChildren<ThermalVisionComponent>().FirstOrDefault(); //default null else thermal item
-			headWearBattery = headWearItem?.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault(); //default null else resource
+			headWearBattery = GetheadWearSight()?.Parent.Item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault(); //default null else resource
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
 				Logger.LogInfo("--- BATTERYSYSTEM: SetHeadWearComponents: ---");
 				Logger.LogInfo("At: " + Time.time);
 				Logger.LogInfo("headWearItem: " + headWearItem);
 				Logger.LogInfo("headWearNVG: " + headWearNvg);
+				Logger.LogInfo("headWearParent: " + GetheadWearSight()?.Parent.Item);
 				Logger.LogInfo("headWearThermal: " + headWearThermal);
 				Logger.LogInfo("Battery in HeadWear: " + headWearBattery?.Item);
 				Logger.LogInfo("Battery Resource: " + headWearBattery);
@@ -86,8 +87,8 @@ namespace BatterySystem
 
 			drainingHeadWearBattery = headWearBattery != null && headWearBattery.Value > 0
 				&& (headWearNvg == null
-				? headWearThermal.Togglable.On
-				: headWearNvg.Togglable.On);
+				? (headWearThermal.Togglable.On && !CameraClass.Instance.ThermalVision.InProcessSwitching)
+				: (headWearNvg.Togglable.On && !CameraClass.Instance.NightVision.InProcessSwitching));
 			// headWear has battery with resource installed and headwear (nvg/thermal) isn't switching and is on
 
 			if (BatterySystemConfig.EnableLogs.Value)
@@ -97,7 +98,6 @@ namespace BatterySystem
 			}
 			if (headWearBattery != null && BatterySystemPlugin.batteryDictionary.ContainsKey(GetheadWearSight()))
 				BatterySystemPlugin.batteryDictionary[GetheadWearSight()] = drainingHeadWearBattery;
-
 
 			if (headWearNvg != null)
 			{
@@ -244,7 +244,7 @@ namespace BatterySystem
 			if (BatterySystemConfig.EnableLogs.Value && BatterySystemPlugin.gameWorld != null && __instance != null)
 			{
 				if (BatterySystemConfig.EnableLogs.Value)
-					Logger.LogInfo("--- BATTERYSYSTEM: UpdateSightMode at: " + Time.time + " for: " + __instance + __instance.SightMod.Item + " ---");
+					Logger.LogInfo("--- BATTERYSYSTEM: UpdateSightMode at: " + Time.time + " for: " + __instance.SightMod.Item + " ---");
 
 				BatterySystem.SetSightComponents(__instance);
 			}

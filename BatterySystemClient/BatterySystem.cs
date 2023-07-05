@@ -10,11 +10,7 @@ using BSG.CameraEffects;
 using BatterySystem.Configs;
 using System.Threading.Tasks;
 using BepInEx.Logging;
-using System.Collections;
 using System.Collections.Generic;
-using System;
-using UnityEngine.Experimental.GlobalIllumination;
-using UnityEngine.Assertions.Must;
 
 namespace BatterySystem
 {
@@ -38,11 +34,20 @@ namespace BatterySystem
 				return null;
 		}
 
+		public static bool isInSlot(Item item, List<Slot> slots)
+		{
+			foreach (Slot slot in slots)
+			{
+				if (slot.ContainedItem != null && item.IsChildOf(slot.ContainedItem)) return true;
+			}
+			return false;
+		}
+
 		public static void GenerateBatteryDictionary()
 		{
 			BatterySystemPlugin.batteryDictionary.Clear();
 
-			if (headWearItem != null) // headwear
+			if (GetheadWearSight() != null) // headwear
 				BatterySystemPlugin.batteryDictionary.Add(GetheadWearSight(), false);
 
 			foreach (SightModVisualControllers sightController in sightMods.Keys) //sights
@@ -62,10 +67,11 @@ namespace BatterySystem
 
 		public static void SetHeadWearComponents()
 		{
-			headWearItem = PlayerInitPatch.inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear).Items?.FirstOrDefault(); // default null else headwear
+			headWearItem = PlayerInitPatch.headWearSlot.Items?.FirstOrDefault(); // default null else headwear
 			headWearNvg = headWearItem?.GetItemComponentsInChildren<NightVisionComponent>().FirstOrDefault(); //default null else nvg item
 			headWearThermal = headWearItem?.GetItemComponentsInChildren<ThermalVisionComponent>().FirstOrDefault(); //default null else thermal item
 			headWearBattery = GetheadWearSight()?.Parent.Item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault(); //default null else resource
+
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
 				Logger.LogInfo("--- BATTERYSYSTEM: SetHeadWearComponents: ---");
@@ -86,9 +92,10 @@ namespace BatterySystem
 				Logger.LogInfo("--- BATTERYSYSTEM: Checking HeadWear battery at " + Time.time + " ---");
 
 			drainingHeadWearBattery = headWearBattery != null && headWearBattery.Value > 0
-				&& (headWearNvg == null
+				&& (headWearNvg == null && headWearThermal != null
 				? (headWearThermal.Togglable.On && !CameraClass.Instance.ThermalVision.InProcessSwitching)
-				: (headWearNvg.Togglable.On && !CameraClass.Instance.NightVision.InProcessSwitching));
+				: (headWearNvg != null && headWearThermal == null ? headWearNvg.Togglable.On && !CameraClass.Instance.NightVision.InProcessSwitching
+				: false));
 			// headWear has battery with resource installed and headwear (nvg/thermal) isn't switching and is on
 
 			if (BatterySystemConfig.EnableLogs.Value)
@@ -106,11 +113,10 @@ namespace BatterySystem
 			}
 			else if (headWearThermal != null)
 			{
-				PlayerInitPatch.thermalOnField.SetValue(CameraClass.Instance.ThermalVision, drainingHeadWearBattery);
 				PlayerInitPatch.nvgOnField.SetValue(CameraClass.Instance.NightVision, false);
+				PlayerInitPatch.thermalOnField.SetValue(CameraClass.Instance.ThermalVision, drainingHeadWearBattery);
 			}
 		}
-
 
 		private static Dictionary<SightModVisualControllers, ResourceComponent> sightMods = new Dictionary<SightModVisualControllers, ResourceComponent>();
 		private static bool drainingSightBattery = false;
@@ -122,9 +128,9 @@ namespace BatterySystem
 				Logger.LogInfo("--- BATTERYSYSTEM: Setting sight components at " + Time.time + " ---");
 				Logger.LogInfo(sightInstance);
 			}
-			if (PlayerInitPatch.inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.FirstPrimaryWeapon).ContainedItem != null && sightInstance.SightMod.Item.IsChildOf(PlayerInitPatch.inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.FirstPrimaryWeapon).ContainedItem))
+			if (isInSlot(sightInstance.SightMod.Item, new List<Slot>() { PlayerInitPatch.firstPrimaryWeaponSlot, PlayerInitPatch.secondPrimaryWeaponSlot, PlayerInitPatch.holsterSlot }))
 			{
-				if (!sightMods.ContainsKey(sightInstance))
+				if (!sightMods.ContainsKey(sightInstance) && sightInstance.gameObject.GetComponentsInChildren<CollimatorSight>(true).FirstOrDefault() != null)
 				{ // if sight is already in dictionary, dont add it. if sight is unequipped, remove it
 					Logger.LogInfo("sightinstance is child of weaponSlot, adding to database " + sightInstance.SightMod.Item);
 					sightMods.Add(sightInstance, sightInstance.SightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault());
@@ -145,15 +151,15 @@ namespace BatterySystem
 				Logger.LogInfo("--- BATTERYSYSTEM: CHECK Sight battery at " + Time.time + " ---");
 
 			SightModVisualControllers key = null;
-			for (int i = 0; i < sightMods.Keys.Count; i++) 
+			for (int i = 0; i < sightMods.Keys.Count; i++)
 			{
 				key = sightMods.Keys.ElementAt(i);
-				//sightmodvisualcontroller[scope_all_eotech_exps3(Clone)] = this.sightComponent_0
+				//sightmodvisualcontroller[scope_all_eotech_exps3(Clone)] = SightMod.sightComponent_0
 				sightMods[key] = key.SightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault();
 				drainingSightBattery = (sightMods[key] != null && sightMods[key].Value > 0);
 
 				if (key.SightMod.Item != null && BatterySystemPlugin.batteryDictionary.ContainsKey(key.SightMod.Item))
-					BatterySystemPlugin.batteryDictionary[key.SightMod.Item] = drainingSightBattery; 
+					BatterySystemPlugin.batteryDictionary[key.SightMod.Item] = drainingSightBattery;
 
 				if (BatterySystemConfig.EnableLogs.Value)
 					Logger.LogInfo("Sight on: " + drainingSightBattery + " for " + key);
@@ -161,8 +167,8 @@ namespace BatterySystem
 				foreach (CollimatorSight col in key.gameObject.GetComponentsInChildren<CollimatorSight>(true)) // true for finding inactive reticles
 				{
 					Logger.LogInfo("Collimator in sightMod: " + col.gameObject);
-					if (drainingSightBattery) 
-						col.gameObject.SetActive(true); 
+					if (drainingSightBattery)
+						col.gameObject.SetActive(true);
 					else
 						col.gameObject.SetActive(false);
 				}
@@ -176,6 +182,10 @@ namespace BatterySystem
 		public static FieldInfo nvgOnField = null;
 		public static FieldInfo thermalOnField = null;
 		public static InventoryControllerClass inventoryController = null;
+		public static Slot firstPrimaryWeaponSlot = null;
+		public static Slot secondPrimaryWeaponSlot = null;
+		public static Slot holsterSlot = null;
+		public static Slot headWearSlot = null;
 
 		protected override MethodBase GetTargetMethod()
 		{
@@ -190,7 +200,10 @@ namespace BatterySystem
 		{
 			await __result;
 			inventoryController = (InventoryControllerClass)inventoryField.GetValue(Singleton<GameWorld>.Instance.MainPlayer); //Player Inventory
-			BatterySystem.SetHeadWearComponents();
+			firstPrimaryWeaponSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.FirstPrimaryWeapon);
+			secondPrimaryWeaponSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.SecondPrimaryWeapon);
+			holsterSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Holster);
+			headWearSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
 		}
 	}
 
@@ -211,14 +224,14 @@ namespace BatterySystem
 					Logger.LogInfo("BATTERYSYSTEM: APPLYING CONTAINED ITEM AT: " + Time.time);
 					Logger.LogInfo("Slot parent: " + __instance.ParentItem);
 				}
-				if (PlayerInitPatch.inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear).ContainedItem != null && __instance.ParentItem.IsChildOf(PlayerInitPatch.inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear).ContainedItem)) //if item in headwear slot applied
-				{
+				if (PlayerInitPatch.headWearSlot.ContainedItem != null && __instance.ParentItem.IsChildOf(PlayerInitPatch.headWearSlot.ContainedItem))
+				{ //if item in headwear slot applied
 					if (BatterySystemConfig.EnableLogs.Value)
 						Logger.LogInfo("Slot is child of HeadWear!");
 					BatterySystem.SetHeadWearComponents();
 				}
-				else if (PlayerInitPatch.inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.FirstPrimaryWeapon).ContainedItem != null && __instance.ParentItem.IsChildOf(PlayerInitPatch.inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.FirstPrimaryWeapon).ContainedItem))
-				{// if sight is removed and empty slot is applied, then remove the sight from sightdb
+				else if (PlayerInitPatch.firstPrimaryWeaponSlot.ContainedItem != null && __instance.ParentItem.IsChildOf(PlayerInitPatch.firstPrimaryWeaponSlot.ContainedItem))
+				{ // if sight is removed and empty slot is applied, then remove the sight from sightdb
 					if (BatterySystemConfig.EnableLogs.Value)
 						Logger.LogInfo("Slot is child of PrimarySlot!");
 				}

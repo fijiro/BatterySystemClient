@@ -22,7 +22,7 @@ namespace BatterySystem
 	public class BatterySystemPlugin : BaseUnityPlugin
 	{
 		public static GameWorld gameWorld;
-		public static float mainCooldown = 2.5f;
+		public static float mainCooldown = 1f;
 		public static Dictionary<string, float> headWearDrainMultiplier = new Dictionary<string, float>();
 		public static Dictionary<Item, bool> batteryDictionary = new Dictionary<Item, bool>();
 		//resource drain all batteries that are on // using dictionary to help and sync draining batteries
@@ -52,7 +52,7 @@ namespace BatterySystem
 			{
 				mainCooldown = Time.time + 1f;
 				gameWorld = Singleton<GameWorld>.Instance;
-				if (gameWorld == null || gameWorld.MainPlayer == null) return;
+				if (gameWorld == null || gameWorld.MainPlayer == null || !gameWorld.MainPlayer.HealthController.IsAlive) return;
 
 				BatterySystem.CheckHeadWearIfDraining();
 				BatterySystem.CheckSightIfDraining();

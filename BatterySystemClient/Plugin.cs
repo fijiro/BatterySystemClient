@@ -17,7 +17,7 @@ namespace BatterySystem
 	 * battery recharger - idea by Props
 	 * make batteries uninsurable, because duhW
 	 */
-	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.1.0")]
+	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.2.0")]
 	[BepInDependency("com.spt-aki.core", "3.5.8")]
 	public class BatterySystemPlugin : BaseUnityPlugin
 	{
@@ -54,6 +54,8 @@ namespace BatterySystem
 				gameWorld = Singleton<GameWorld>.Instance;
 				if (gameWorld == null || gameWorld.MainPlayer == null || !gameWorld.MainPlayer.HealthController.IsAlive) return;
 
+				BatterySystem.Logger.LogInfo("Active Slot: " + gameWorld.MainPlayer.ActiveSlot + " Last eq: " + gameWorld.MainPlayer.LastEquippedWeaponOrKnifeItem);
+
 				BatterySystem.CheckHeadWearIfDraining();
 				BatterySystem.CheckSightIfDraining();
 				DrainBatteries();
@@ -64,18 +66,21 @@ namespace BatterySystem
 			//Item itemInHands = inventoryControllerClass.ItemInHands;
 			//List<string> equippedTpl = inventoryControllerClass.Inventory.EquippedInSlotsTemplateIds;
 		}
+
 		private static void DrainBatteries()
 		{
 			foreach (Item item in batteryDictionary.Keys)
 			{
 				if (batteryDictionary[item]) // == true
 				{
-					BatterySystem.Logger.LogInfo("drainbattery item: " + item);
+					if (BatterySystemConfig.EnableLogs.Value)
+						BatterySystem.Logger.LogInfo("drainbattery item: " + item);
 					if (BatterySystem.headWearBattery != null && item.IsChildOf(BatterySystem.headWearItem)
 						&& BatterySystem.headWearItem.GetItemComponentsInChildren<TogglableComponent>().FirstOrDefault() != null
 						&& BatterySystem.headWearItem.GetItemComponentsInChildren<TogglableComponent>().FirstOrDefault().On) //for headwear nvg/t-7
 					{
-						BatterySystem.Logger.LogInfo("draining battery");
+						if (BatterySystemConfig.EnableLogs.Value)
+							BatterySystem.Logger.LogInfo("draining battery");
 						Mathf.Clamp(BatterySystem.headWearBattery.Value -= 1 / 36f
 								* BatterySystemConfig.DrainMultiplier.Value
 								* headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId], 0, 100);

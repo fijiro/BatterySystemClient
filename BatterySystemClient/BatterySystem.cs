@@ -131,23 +131,28 @@ namespace BatterySystem
 
 			if (isInSlot(sightInstance.SightMod.Item, PlayerInitPatch.weaponSlotsList))
 			{
+				// if sight is already in dictionary, dont add it. if sight is unequipped, remove it
 				if (!sightMods.ContainsKey(sightInstance) && sightInstance.gameObject.GetComponentsInChildren<CollimatorSight>(true).FirstOrDefault() != null)
-				{ // if sight is already in dictionary, dont add it. if sight is unequipped, remove it
-					Logger.LogInfo("sightinstance is child of weaponSlot, adding to database " + sightInstance.SightMod.Item);
+				{ 
+					if (BatterySystemConfig.EnableLogs.Value)
+						Logger.LogInfo("sightinstance is child of weaponSlot, adding to database " + sightInstance.SightMod.Item);
 					sightMods.Add(sightInstance, sightInstance.SightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault());
 					GenerateBatteryDictionary();
 				}
 			}
+
+			// if sight is unequipped, then remove it from being drained.
 			else if (sightMods.ContainsKey(sightInstance))
-			{ // if sight is unequipped, then remove it from being drained.
-				Logger.LogInfo("sightinstance is not child of weaponSlot, removing");
+			{ 
+				if (BatterySystemConfig.EnableLogs.Value)
+					Logger.LogInfo("sightinstance is not child of weaponSlot, removing");
 				sightMods.Remove(sightInstance);
 				GenerateBatteryDictionary();
 			}
 		}
-
+		//foreach sight in database<sight, collimator>: if sight has component with resource then collimator on, else
 		public static void CheckSightIfDraining()
-		{ //foreach sight in database<sight, collimator>: if sight has component with resource then collimator on, else
+		{ 
 			if (BatterySystemConfig.EnableLogs.Value)
 				Logger.LogInfo("--- BATTERYSYSTEM: CHECK Sight battery at " + Time.time + " ---");
 
@@ -159,15 +164,16 @@ namespace BatterySystem
 				{
 					//sightmodvisualcontroller[scope_all_eotech_exps3(Clone)] = SightMod.sightComponent_0
 					sightMods[key] = key.SightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault();
-					drainingSightBattery = (sightMods[key] != null && sightMods[key].Value > 0);
+					drainingSightBattery = (sightMods[key] != null && sightMods[key].Value > 0
+						&& isInSlot(key.SightMod.Item, new List<Slot> { BatterySystemPlugin.gameWorld.MainPlayer.ActiveSlot }));
 
 					if (BatterySystemPlugin.batteryDictionary.ContainsKey(key.SightMod.Item))
 						BatterySystemPlugin.batteryDictionary[key.SightMod.Item] = drainingSightBattery;
 
 					if (BatterySystemConfig.EnableLogs.Value)
 						Logger.LogInfo("Sight on: " + drainingSightBattery + " for " + key);
-
-					foreach (CollimatorSight col in key.gameObject.GetComponentsInChildren<CollimatorSight>(true)) // true for finding inactive reticles
+					// true for finding inactive reticles
+					foreach (CollimatorSight col in key.gameObject.GetComponentsInChildren<CollimatorSight>(true)) 
 					{
 						if (BatterySystemConfig.EnableLogs.Value)
 							Logger.LogInfo("Collimator in sightMod: " + col.gameObject);

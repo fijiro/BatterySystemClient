@@ -12,10 +12,11 @@ namespace BatterySystem
 	/*TODO: 
 	 * equipping and removing headwear gives infinite nvg
 	 * switch to coroutines
+	 * flir does not require batteries, make recharge craft
 	 * Sound when toggling battery runs out or is removed or added
 	 * New model for battery
 	 * battery recharger - idea by Props
-	 * make batteries uninsurable, because duhW
+	 * make batteries uninsurable, because duh
 	 */
 	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.2.0")]
 	[BepInDependency("com.spt-aki.core", "3.5.8")]
@@ -33,6 +34,7 @@ namespace BatterySystem
 			new ApplyItemPatch().Enable();
 			new SightDevicePatch().Enable();
 			new NvgHeadWearPatch().Enable();
+			new ThermalHeadWearPatch().Enable();
 			//update dictionary with values
 			//foreach (ItemTemplate template in ItemTemplates)
 			{
@@ -41,27 +43,19 @@ namespace BatterySystem
 				headWearDrainMultiplier.Add("5c066e3a0db834001b7353f0", 1f); // Armasight N-15 Night Vision Goggles, single CR123A lithium battery
 				headWearDrainMultiplier.Add("57235b6f24597759bf5a30f1", 0.5f); // AN/PVS-14 Night Vision Monocular, AA Battery
 				headWearDrainMultiplier.Add("5c110624d174af029e69734c", 3f); // T-7 Thermal Goggles with a Night Vision mount, Double AA
-																			 //specter uses cr2032, hhs cr123
 			}
 		}
 		void Update() // battery is drained in Update() and applied
 		{
-
-
 			if (Time.time > mainCooldown && BatterySystemConfig.EnableMod.Value)
 			{
 				mainCooldown = Time.time + 1f;
 				gameWorld = Singleton<GameWorld>.Instance;
 				if (gameWorld == null || gameWorld.MainPlayer == null || !gameWorld.MainPlayer.HealthController.IsAlive) return;
 
-				BatterySystem.Logger.LogInfo("Active Slot: " + gameWorld.MainPlayer.ActiveSlot + " Last eq: " + gameWorld.MainPlayer.LastEquippedWeaponOrKnifeItem);
-
 				BatterySystem.CheckHeadWearIfDraining();
 				BatterySystem.CheckSightIfDraining();
 				DrainBatteries();
-				//if (CameraClass.Instance.NightVision.InProcessSwitching) headWearCooldown = Time.time + 0.02f; // workaround, fix this l8r
-
-				// doesn't run unless needed
 			}
 			//Item itemInHands = inventoryControllerClass.ItemInHands;
 			//List<string> equippedTpl = inventoryControllerClass.Inventory.EquippedInSlotsTemplateIds;
@@ -73,20 +67,16 @@ namespace BatterySystem
 			{
 				if (batteryDictionary[item]) // == true
 				{
-					if (BatterySystemConfig.EnableLogs.Value)
-						BatterySystem.Logger.LogInfo("drainbattery item: " + item);
 					if (BatterySystem.headWearBattery != null && item.IsChildOf(BatterySystem.headWearItem)
-						&& BatterySystem.headWearItem.GetItemComponentsInChildren<TogglableComponent>().FirstOrDefault() != null
-						&& BatterySystem.headWearItem.GetItemComponentsInChildren<TogglableComponent>().FirstOrDefault().On) //for headwear nvg/t-7
+						&& BatterySystem.headWearItem.GetItemComponentsInChildren<TogglableComponent>().FirstOrDefault()?.On == true) 
+						//for headwear nvg/t-7
 					{
-						if (BatterySystemConfig.EnableLogs.Value)
-							BatterySystem.Logger.LogInfo("draining battery");
 						Mathf.Clamp(BatterySystem.headWearBattery.Value -= 1 / 36f
 								* BatterySystemConfig.DrainMultiplier.Value
 								* headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId], 0, 100);
 					}
 
-					else if (item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault() != null)
+					else if (item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault() != null) //for sights
 					{
 						Mathf.Clamp(item.GetItemComponentsInChildren<ResourceComponent>().First().Value -= 1 / 100f
 							* BatterySystemConfig.DrainMultiplier.Value, 0, 100); //2 hr
@@ -94,7 +84,6 @@ namespace BatterySystem
 					//Default battery lasts 1 hr * configmulti * itemmulti, itemmulti was dev_raccoon's idea!
 				}
 			}
-			return;
 		}
 
 		/* Credit to Nexus and Fontaine for showing me this!

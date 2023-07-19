@@ -11,6 +11,7 @@ using BatterySystem.Configs;
 using System.Threading.Tasks;
 using BepInEx.Logging;
 using System.Collections.Generic;
+using EFT.CameraControl;
 
 namespace BatterySystem
 {
@@ -34,13 +35,10 @@ namespace BatterySystem
 				return null;
 		}
 
-		public static bool isInSlot(Item item, List<Slot> slots)
+		public static bool IsInSlot(Item item, Slot slot)
 		{
-			foreach (Slot slot in slots)
-			{
-				if (item != null && slot.ContainedItem != null && item.IsChildOf(slot.ContainedItem)) return true;
-			}
-			return false;
+			if (item != null && slot?.ContainedItem != null && item.IsChildOf(slot.ContainedItem)) return true;
+			else return false;
 		}
 
 		public static void GenerateBatteryDictionary()
@@ -50,18 +48,24 @@ namespace BatterySystem
 			if (GetheadWearSight() != null) // headwear
 				BatterySystemPlugin.batteryDictionary.Add(GetheadWearSight(), false);
 
-			foreach (SightModVisualControllers sightController in sightMods.Keys) //sights
+			for (int i = sightMods.Keys.Count - 1; i >= 0; i--)
 			{
-				if (sightController.SightMod.Item != null && !BatterySystemPlugin.batteryDictionary.ContainsKey(sightController.SightMod.Item))
+				SightModVisualControllers sightController = sightMods.Keys.ElementAt(i);
+				//only drain sights that are on equipped weapon
+				if (IsInSlot(sightController.SightMod.Item, BatterySystemPlugin.gameWorld?.MainPlayer.ActiveSlot)
+					&& !BatterySystemPlugin.batteryDictionary.ContainsKey(sightController.SightMod.Item))
 					BatterySystemPlugin.batteryDictionary.Add(sightController.SightMod.Item, false);
+				//remove sights that are not in use
+				else
+					sightMods.Remove(sightController);
 			}
+
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
 				Logger.LogInfo("--- BATTERYSYSTEM: Generated battery dictionary: ---");
 				foreach (Item i in BatterySystemPlugin.batteryDictionary.Keys)
-				{
 					Logger.LogInfo(i);
-				}
+				Logger.LogInfo("---------------------------------------------");
 			}
 		}
 
@@ -74,7 +78,7 @@ namespace BatterySystem
 
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
-				Logger.LogInfo("--- BATTERYSYSTEM: SetHeadWearComponents: ---");
+				Logger.LogInfo("--- BATTERYSYSTEM: SetHeadWearComponents: " + Time.time + " ---");
 				Logger.LogInfo("At: " + Time.time);
 				Logger.LogInfo("headWearItem: " + headWearItem);
 				Logger.LogInfo("headWearNVG: " + headWearNvg);
@@ -83,14 +87,12 @@ namespace BatterySystem
 				Logger.LogInfo("Battery in HeadWear: " + headWearBattery?.Item);
 				Logger.LogInfo("Battery Resource: " + headWearBattery);
 			}
+
 			GenerateBatteryDictionary();
 		}
 
 		public static void CheckHeadWearIfDraining()
 		{
-			if (BatterySystemConfig.EnableLogs.Value)
-				Logger.LogInfo("--- BATTERYSYSTEM: Checking HeadWear battery at " + Time.time + " ---");
-
 			drainingHeadWearBattery = headWearBattery != null && headWearBattery.Value > 0
 				&& (headWearNvg == null && headWearThermal != null
 				? (headWearThermal.Togglable.On && !CameraClass.Instance.ThermalVision.InProcessSwitching)
@@ -100,8 +102,10 @@ namespace BatterySystem
 
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
+				Logger.LogInfo("--- BATTERYSYSTEM: Checking HeadWear battery: " + Time.time + " ---");
 				Logger.LogInfo("hwItem: " + GetheadWearSight());
 				Logger.LogInfo("Battery level " + headWearBattery?.Value + ", HeadWear_on: " + drainingHeadWearBattery);
+				Logger.LogInfo("---------------------------------------------");
 			}
 			if (headWearBattery != null && BatterySystemPlugin.batteryDictionary.ContainsKey(GetheadWearSight()))
 				BatterySystemPlugin.batteryDictionary[GetheadWearSight()] = drainingHeadWearBattery;
@@ -126,85 +130,82 @@ namespace BatterySystem
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
 				Logger.LogInfo("--- BATTERYSYSTEM: Setting sight components at " + Time.time + " ---");
-				Logger.LogInfo(sightInstance);
+				Logger.LogInfo("For: " + sightInstance);
 			}
 
-			if (isInSlot(sightInstance.SightMod.Item, PlayerInitPatch.weaponSlotsList))
+			if (IsInSlot(sightInstance.SightMod.Item, BatterySystemPlugin.gameWorld.MainPlayer.ActiveSlot))
 			{
-				// if sight is already in dictionary, dont add it. if sight is unequipped, remove it
-				if (!sightMods.ContainsKey(sightInstance) && sightInstance.gameObject.GetComponentsInChildren<CollimatorSight>(true).FirstOrDefault() != null)
-				{ 
-					if (BatterySystemConfig.EnableLogs.Value)
-						Logger.LogInfo("sightinstance is child of weaponSlot, adding to database " + sightInstance.SightMod.Item);
+				if (BatterySystemConfig.EnableLogs.Value)
+					Logger.LogInfo("Sight Found: " + sightInstance.SightMod.Item);
+				// if sight is already in dictionary, dont add it
+				if (!sightMods.Keys.Any(key => key.SightMod.Item == sightInstance.SightMod.Item)
+					&& (sightInstance.gameObject.GetComponentsInChildren<CollimatorSight>(true).FirstOrDefault() != null
+					|| sightInstance.SightMod.Item.TemplateId == "5a1eaa87fcdbcb001865f75e")) //reap-ir
+				{
 					sightMods.Add(sightInstance, sightInstance.SightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault());
-					GenerateBatteryDictionary();
 				}
 			}
-
-			// if sight is unequipped, then remove it from being drained.
-			else if (sightMods.ContainsKey(sightInstance))
-			{ 
-				if (BatterySystemConfig.EnableLogs.Value)
-					Logger.LogInfo("sightinstance is not child of weaponSlot, removing");
-				sightMods.Remove(sightInstance);
-				GenerateBatteryDictionary();
-			}
+			GenerateBatteryDictionary();
 		}
 		//foreach sight in database<sight, collimator>: if sight has component with resource then collimator on, else
 		public static void CheckSightIfDraining()
-		{ 
+		{
+			//ERROR:  If reap-ir is on and using canted collimator, enabled optic sight removes collimator effect. find a way to only drain active sight!
+			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			if (BatterySystemConfig.EnableLogs.Value)
 				Logger.LogInfo("--- BATTERYSYSTEM: CHECK Sight battery at " + Time.time + " ---");
-
-			SightModVisualControllers key = null;
 			for (int i = 0; i < sightMods.Keys.Count; i++)
 			{
-				key = sightMods.Keys.ElementAt(i);
+				SightModVisualControllers key = sightMods.Keys.ElementAt(i);
 				if (key?.SightMod?.Item != null)
 				{
 					//sightmodvisualcontroller[scope_all_eotech_exps3(Clone)] = SightMod.sightComponent_0
 					sightMods[key] = key.SightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault();
 					drainingSightBattery = (sightMods[key] != null && sightMods[key].Value > 0
-						&& isInSlot(key.SightMod.Item, new List<Slot> { BatterySystemPlugin.gameWorld.MainPlayer.ActiveSlot }));
+						&& IsInSlot(key.SightMod.Item, BatterySystemPlugin.gameWorld?.MainPlayer.ActiveSlot));
 
 					if (BatterySystemPlugin.batteryDictionary.ContainsKey(key.SightMod.Item))
 						BatterySystemPlugin.batteryDictionary[key.SightMod.Item] = drainingSightBattery;
 
 					if (BatterySystemConfig.EnableLogs.Value)
-						Logger.LogInfo("Sight on: " + drainingSightBattery + " for " + key);
+						Logger.LogInfo("Sight on: " + drainingSightBattery + " for " + key + key.SightMod.Item);
 					// true for finding inactive reticles
-					foreach (CollimatorSight col in key.gameObject.GetComponentsInChildren<CollimatorSight>(true)) 
+					foreach (CollimatorSight col in key.gameObject.GetComponentsInChildren<CollimatorSight>(true))
 					{
 						if (BatterySystemConfig.EnableLogs.Value)
 							Logger.LogInfo("Collimator in sightMod: " + col.gameObject);
 
-						if (drainingSightBattery)
-							col.gameObject.SetActive(true);
-						else
-							col.gameObject.SetActive(false);
+						col.gameObject.SetActive(drainingSightBattery);
+					}
+					foreach (OpticSight optic in key.gameObject.GetComponentsInChildren<OpticSight>(true))
+					{
+						if (BatterySystemConfig.EnableLogs.Value)
+							Logger.LogInfo("Optic in sightMod: " + optic.gameObject);
+						//if no optic is enabled, thermal is disabled. have to check equipped sight soon
+						if (Camera.allCameras.FirstOrDefault(cam => cam.name == "BaseOpticCamera(Clone)"))
+							optic.enabled = drainingSightBattery;
+						else optic.enabled = false;
 					}
 				}
 			}
+			if (BatterySystemConfig.EnableLogs.Value)
+				Logger.LogInfo("---------------------------------------------");
 		}
 	}
 
 	public class PlayerInitPatch : ModulePatch
 	{
 		private static FieldInfo inventoryField = null;
+		private static InventoryControllerClass inventoryController = null;
 		public static FieldInfo nvgOnField = null;
 		public static FieldInfo thermalOnField = null;
-		public static InventoryControllerClass inventoryController = null;
-		public static Slot firstPrimaryWeaponSlot = null;
-		public static Slot secondPrimaryWeaponSlot = null;
-		public static Slot holsterSlot = null;
 		public static Slot headWearSlot = null;
-		public static List<Slot> weaponSlotsList = null;
 
-	protected override MethodBase GetTargetMethod()
+		protected override MethodBase GetTargetMethod()
 		{
+			inventoryField = AccessTools.Field(typeof(Player), "_inventoryController");
 			nvgOnField = AccessTools.Field(typeof(NightVision), "_on");
 			thermalOnField = AccessTools.Field(typeof(ThermalVision), "On");
-			inventoryField = AccessTools.Field(typeof(Player), "_inventoryController");
 			return typeof(Player).GetMethod("Init", BindingFlags.NonPublic | BindingFlags.Instance);
 		}
 
@@ -216,11 +217,23 @@ namespace BatterySystem
 				Logger.LogInfo("PlayerInitPatch AT " + Time.time);
 			BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
 			inventoryController = (InventoryControllerClass)inventoryField.GetValue(Singleton<GameWorld>.Instance.MainPlayer); //Player Inventory
-			firstPrimaryWeaponSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.FirstPrimaryWeapon);
-			secondPrimaryWeaponSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.SecondPrimaryWeapon);
-			holsterSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Holster);
 			headWearSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
-			weaponSlotsList = new List<Slot> { firstPrimaryWeaponSlot, secondPrimaryWeaponSlot, holsterSlot };
+			Singleton<IBotGame>.Instance.BotsController.BotSpawner.OnBotCreated += owner =>
+			{
+				Logger.LogInfo(Time.time);
+				Logger.LogInfo("OnBotCreated");
+				FieldInfo inventoryBotField = AccessTools.Field(typeof(Player), "_inventoryController");
+				InventoryControllerClass botInventory = (InventoryControllerClass)inventoryField.GetValue(owner.GetPlayer);
+				foreach (Item item in botInventory.EquipmentItems)
+				{
+					Logger.LogInfo("Checking item from slot: " + item);
+					foreach (ResourceComponent resource in item.GetItemComponentsInChildren<ResourceComponent>())
+					{
+						resource.Value = Random.Range(0, 15);
+						Logger.LogInfo("Res value: " + resource.Value);
+					}
+				}
+			};
 		}
 	}
 
@@ -241,21 +254,16 @@ namespace BatterySystem
 					Logger.LogInfo("BATTERYSYSTEM: APPLYING CONTAINED ITEM AT: " + Time.time);
 					Logger.LogInfo("Slot parent: " + __instance.ParentItem);
 				}
-				if (PlayerInitPatch.headWearSlot.ContainedItem != null && __instance.ParentItem.IsChildOf(PlayerInitPatch.headWearSlot.ContainedItem))
+				if (BatterySystem.IsInSlot(PlayerInitPatch.headWearSlot.ContainedItem, PlayerInitPatch.headWearSlot))
 				{ //if item in headwear slot applied
 					if (BatterySystemConfig.EnableLogs.Value)
 						Logger.LogInfo("Slot is child of HeadWear!");
 					BatterySystem.SetHeadWearComponents();
 				}
-				else if (BatterySystem.isInSlot(__instance.ContainedItem, PlayerInitPatch.weaponSlotsList))
+				else if (BatterySystem.IsInSlot(__instance.ContainedItem, BatterySystemPlugin.gameWorld?.MainPlayer.ActiveSlot))
 				{ // if sight is removed and empty slot is applied, then remove the sight from sightdb
 					if (BatterySystemConfig.EnableLogs.Value)
-						Logger.LogInfo("Slot is child of PrimarySlot!");
-				}
-				else if (__instance.ParentItem.IsChildOf(PlayerInitPatch.inventoryController.Inventory.Equipment))
-				{
-					if (BatterySystemConfig.EnableLogs.Value)
-						Logger.LogInfo("Slot is child of Equipment!");
+						Logger.LogInfo("Slot is child of ActiveSlot!");
 				}
 			}
 		}
@@ -271,7 +279,7 @@ namespace BatterySystem
 		[PatchPostfix]
 		static void Postfix(ref SightModVisualControllers __instance)
 		{
-			if (__instance != null && BatterySystemConfig.EnableLogs.Value && BatterySystemPlugin.gameWorld != null)
+			if (__instance != null && BatterySystemConfig.EnableMod.Value && BatterySystemPlugin.gameWorld != null && BatterySystem.IsInSlot(__instance.SightMod.Item, BatterySystemPlugin.gameWorld?.MainPlayer.ActiveSlot))
 			{
 				BatterySystem.SetSightComponents(__instance);
 			}
@@ -289,8 +297,6 @@ namespace BatterySystem
 		{
 			if (__instance.name == "FPS Camera" && BatterySystemConfig.EnableMod.Value && BatterySystemPlugin.gameWorld != null)
 			{
-				if (BatterySystemConfig.EnableLogs.Value)
-					Logger.LogInfo("BATTERYSYSTEM: APPLYING NVG SETTINGS AT: " + Time.time);
 				BatterySystem.SetHeadWearComponents();
 				//temp workaround kek. have to do a coroutine that triggers after InProcessSwitching
 			}
@@ -309,8 +315,6 @@ namespace BatterySystem
 			if (__instance.name == "FPS Camera" && BatterySystemConfig.EnableMod.Value && BatterySystemPlugin.gameWorld != null)
 			// if switching on with no battery or equipping with nvg on, turn off
 			{
-				if (BatterySystemConfig.EnableLogs.Value)
-					Logger.LogInfo("BATTERYSYSTEM: APPLYING THERMAL SETTINGS AT: " + Time.time);
 				BatterySystem.SetHeadWearComponents();
 				//temp workaround kek. have to do a coroutine that triggers after !InProcessSwitching.
 			}

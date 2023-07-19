@@ -48,7 +48,7 @@ namespace BatterySystem
 			if (GetheadWearSight() != null) // headwear
 				BatterySystemPlugin.batteryDictionary.Add(GetheadWearSight(), false);
 
-			for (int i = sightMods.Keys.Count - 1; i >= 0; i--) 
+			for (int i = sightMods.Keys.Count - 1; i >= 0; i--)
 			{
 				SightModVisualControllers sightController = sightMods.Keys.ElementAt(i);
 				//only drain sights that are on equipped weapon
@@ -150,7 +150,7 @@ namespace BatterySystem
 		//foreach sight in database<sight, collimator>: if sight has component with resource then collimator on, else
 		public static void CheckSightIfDraining()
 		{
-			//ERROR:  If reap-ir is on and using canted collimator, enabled optic sight removes collimator effect. find a method when switching sights to enable reap-ir only when in use!
+			//ERROR:  If reap-ir is on and using canted collimator, enabled optic sight removes collimator effect. find a way to only drain active sight!
 			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			if (BatterySystemConfig.EnableLogs.Value)
 				Logger.LogInfo("--- BATTERYSYSTEM: CHECK Sight battery at " + Time.time + " ---");
@@ -216,6 +216,26 @@ namespace BatterySystem
 			BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
 			inventoryController = (InventoryControllerClass)inventoryField.GetValue(Singleton<GameWorld>.Instance.MainPlayer); //Player Inventory
 			headWearSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
+			// Sub to Event to get and add Bot when they spawn, credit to DrakiaXYZ!
+			//bot.player._inventory.findcomponentsinchildren(resourcecomponent)
+			//resourcecomponent = random 0 - 20
+			//not ran at all yet?
+			Singleton<IBotGame>.Instance.BotsController.BotSpawner.OnBotCreated += owner =>
+			{
+				Logger.LogInfo(Time.time);
+				Logger.LogInfo("OnBotCreated");
+				FieldInfo inventoryBotField = AccessTools.Field(typeof(Player), "_inventoryController");
+				InventoryControllerClass botInventory = (InventoryControllerClass)inventoryField.GetValue(owner.GetPlayer);
+				foreach (Item item in botInventory.EquipmentItems)
+				{
+					Logger.LogInfo("Checking item from slot: " + item);
+					foreach (ResourceComponent resource in item.GetItemComponentsInChildren<ResourceComponent>())
+					{
+						resource.Value = Random.Range(0, 20);
+						Logger.LogInfo("Res value: " + resource.Value);
+					}
+				}
+			};
 		}
 	}
 

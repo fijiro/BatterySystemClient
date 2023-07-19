@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using Comfort.Common;
 using UnityEngine;
 using EFT;
+using HarmonyLib;
 using BatterySystem.Configs;
 using EFT.InventoryLogic;
 using System.Linq;
+using System.Reflection;
 
 namespace BatterySystem
 {
@@ -23,6 +25,7 @@ namespace BatterySystem
 	public class BatterySystemPlugin : BaseUnityPlugin
 	{
 		public static GameWorld gameWorld;
+		private static IBotGame _botGame;
 		public static float mainCooldown = 1f;
 		public static Dictionary<string, float> headWearDrainMultiplier = new Dictionary<string, float>();
 		public static Dictionary<Item, bool> batteryDictionary = new Dictionary<Item, bool>();
@@ -45,6 +48,7 @@ namespace BatterySystem
 				headWearDrainMultiplier.Add("5c110624d174af029e69734c", 3f); // T-7 Thermal Goggles with a Night Vision mount, Double AA
 			}
 		}
+
 		void Update() // battery is drained in Update() and applied
 		{
 			if (Time.time > mainCooldown && BatterySystemConfig.EnableMod.Value)
@@ -68,8 +72,8 @@ namespace BatterySystem
 				if (batteryDictionary[item]) // == true
 				{
 					if (BatterySystem.headWearBattery != null && item.IsChildOf(BatterySystem.headWearItem)
-						&& BatterySystem.headWearItem.GetItemComponentsInChildren<TogglableComponent>().FirstOrDefault()?.On == true) 
-						//for headwear nvg/t-7
+						&& BatterySystem.headWearItem.GetItemComponentsInChildren<TogglableComponent>().FirstOrDefault()?.On == true)
+					//for headwear nvg/t-7
 					{
 						Mathf.Clamp(BatterySystem.headWearBattery.Value -= 1 / 36f
 								* BatterySystemConfig.DrainMultiplier.Value

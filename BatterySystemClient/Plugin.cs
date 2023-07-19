@@ -79,7 +79,6 @@ namespace BatterySystem
 								* BatterySystemConfig.DrainMultiplier.Value
 								* headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId], 0, 100);
 					}
-
 					else if (item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault() != null) //for sights
 					{
 						Mathf.Clamp(item.GetItemComponentsInChildren<ResourceComponent>().First().Value -= 1 / 100f

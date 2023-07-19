@@ -181,8 +181,10 @@ namespace BatterySystem
 					{
 						if (BatterySystemConfig.EnableLogs.Value)
 							Logger.LogInfo("Optic in sightMod: " + optic.gameObject);
-
-						optic.enabled = drainingSightBattery;
+						//if no optic is enabled, thermal is disabled. have to check equipped sight soon
+						if (Camera.allCameras.FirstOrDefault(cam => cam.name == "BaseOpticCamera(Clone)"))
+							optic.enabled = drainingSightBattery;
+						else optic.enabled = false;
 					}
 				}
 			}
@@ -216,10 +218,6 @@ namespace BatterySystem
 			BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
 			inventoryController = (InventoryControllerClass)inventoryField.GetValue(Singleton<GameWorld>.Instance.MainPlayer); //Player Inventory
 			headWearSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
-			// Sub to Event to get and add Bot when they spawn, credit to DrakiaXYZ!
-			//bot.player._inventory.findcomponentsinchildren(resourcecomponent)
-			//resourcecomponent = random 0 - 20
-			//not ran at all yet?
 			Singleton<IBotGame>.Instance.BotsController.BotSpawner.OnBotCreated += owner =>
 			{
 				Logger.LogInfo(Time.time);
@@ -231,7 +229,7 @@ namespace BatterySystem
 					Logger.LogInfo("Checking item from slot: " + item);
 					foreach (ResourceComponent resource in item.GetItemComponentsInChildren<ResourceComponent>())
 					{
-						resource.Value = Random.Range(0, 20);
+						resource.Value = Random.Range(0, 15);
 						Logger.LogInfo("Res value: " + resource.Value);
 					}
 				}

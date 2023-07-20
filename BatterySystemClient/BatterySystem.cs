@@ -20,21 +20,21 @@ namespace BatterySystem
 		public static ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("BatterySystem");
 
 		public static Item headWearItem = null;
-		private static NightVisionComponent headWearNvg = null;
-		private static ThermalVisionComponent headWearThermal = null;
-		private static bool drainingHeadWearBattery = false;
+		private static NightVisionComponent _headWearNvg = null;
+		private static ThermalVisionComponent _headWearThermal = null;
+		private static bool _drainingHeadWearBattery = false;
 		public static ResourceComponent headWearBattery = null;
 
 		public static Dictionary<SightModVisualControllers, ResourceComponent> sightMods = new Dictionary<SightModVisualControllers, ResourceComponent>();
-		private static bool drainingSightBattery = false;
+		private static bool _drainingSightBattery = false;
 
 
 		public static Item GetheadWearSight() // returns the special device goggles that are equipped
 		{
-			if (headWearNvg != null)
-				return headWearNvg.Item;
-			else if (headWearThermal != null)
-				return headWearThermal.Item;
+			if (_headWearNvg != null)
+				return _headWearNvg.Item;
+			else if (_headWearThermal != null)
+				return _headWearThermal.Item;
 			else
 				return null;
 		}
@@ -72,8 +72,8 @@ namespace BatterySystem
 		public static void SetHeadWearComponents()
 		{
 			headWearItem = PlayerInitPatch.headWearSlot.Items?.FirstOrDefault(); // default null else headwear
-			headWearNvg = headWearItem?.GetItemComponentsInChildren<NightVisionComponent>().FirstOrDefault(); //default null else nvg item
-			headWearThermal = headWearItem?.GetItemComponentsInChildren<ThermalVisionComponent>().FirstOrDefault(); //default null else thermal item
+			_headWearNvg = headWearItem?.GetItemComponentsInChildren<NightVisionComponent>().FirstOrDefault(); //default null else nvg item
+			_headWearThermal = headWearItem?.GetItemComponentsInChildren<ThermalVisionComponent>().FirstOrDefault(); //default null else thermal item
 			headWearBattery = GetheadWearSight()?.Parent.Item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault(); //default null else resource
 
 			if (BatterySystemConfig.EnableLogs.Value)
@@ -81,9 +81,9 @@ namespace BatterySystem
 				Logger.LogInfo("--- BATTERYSYSTEM: SetHeadWearComponents: " + Time.time + " ---");
 				Logger.LogInfo("At: " + Time.time);
 				Logger.LogInfo("headWearItem: " + headWearItem);
-				Logger.LogInfo("headWearNVG: " + headWearNvg);
+				Logger.LogInfo("headWearNVG: " + _headWearNvg);
 				Logger.LogInfo("headWearParent: " + GetheadWearSight()?.Parent.Item);
-				Logger.LogInfo("headWearThermal: " + headWearThermal);
+				Logger.LogInfo("headWearThermal: " + _headWearThermal);
 				Logger.LogInfo("Battery in HeadWear: " + headWearBattery?.Item);
 				Logger.LogInfo("Battery Resource: " + headWearBattery);
 			}
@@ -93,10 +93,10 @@ namespace BatterySystem
 
 		public static void CheckHeadWearIfDraining()
 		{
-			drainingHeadWearBattery = headWearBattery != null && headWearBattery.Value > 0
-				&& (headWearNvg == null && headWearThermal != null
-				? (headWearThermal.Togglable.On && !CameraClass.Instance.ThermalVision.InProcessSwitching)
-				: (headWearNvg != null && headWearThermal == null ? headWearNvg.Togglable.On && !CameraClass.Instance.NightVision.InProcessSwitching
+			_drainingHeadWearBattery = headWearBattery != null && headWearBattery.Value > 0
+				&& (_headWearNvg == null && _headWearThermal != null
+				? (_headWearThermal.Togglable.On && !CameraClass.Instance.ThermalVision.InProcessSwitching)
+				: (_headWearNvg != null && _headWearThermal == null ? _headWearNvg.Togglable.On && !CameraClass.Instance.NightVision.InProcessSwitching
 				: false));
 			// headWear has battery with resource installed and headwear (nvg/thermal) isn't switching and is on
 
@@ -104,21 +104,21 @@ namespace BatterySystem
 			{
 				Logger.LogInfo("--- BATTERYSYSTEM: Checking HeadWear battery: " + Time.time + " ---");
 				Logger.LogInfo("hwItem: " + GetheadWearSight());
-				Logger.LogInfo("Battery level " + headWearBattery?.Value + ", HeadWear_on: " + drainingHeadWearBattery);
+				Logger.LogInfo("Battery level " + headWearBattery?.Value + ", HeadWear_on: " + _drainingHeadWearBattery);
 				Logger.LogInfo("---------------------------------------------");
 			}
 			if (headWearBattery != null && BatterySystemPlugin.batteryDictionary.ContainsKey(GetheadWearSight()))
-				BatterySystemPlugin.batteryDictionary[GetheadWearSight()] = drainingHeadWearBattery;
+				BatterySystemPlugin.batteryDictionary[GetheadWearSight()] = _drainingHeadWearBattery;
 
-			if (headWearNvg != null)
+			if (_headWearNvg != null)
 			{
-				PlayerInitPatch.nvgOnField.SetValue(CameraClass.Instance.NightVision, drainingHeadWearBattery);
+				PlayerInitPatch.nvgOnField.SetValue(CameraClass.Instance.NightVision, _drainingHeadWearBattery);
 				PlayerInitPatch.thermalOnField.SetValue(CameraClass.Instance.ThermalVision, false);
 			}
-			else if (headWearThermal != null)
+			else if (_headWearThermal != null)
 			{
 				PlayerInitPatch.nvgOnField.SetValue(CameraClass.Instance.NightVision, false);
-				PlayerInitPatch.thermalOnField.SetValue(CameraClass.Instance.ThermalVision, drainingHeadWearBattery);
+				PlayerInitPatch.thermalOnField.SetValue(CameraClass.Instance.ThermalVision, _drainingHeadWearBattery);
 			}
 		}
 
@@ -172,22 +172,22 @@ namespace BatterySystem
 				{
 					//sightmodvisualcontroller[scope_all_eotech_exps3(Clone)] = SightMod.sightComponent_0
 					sightMods[key] = key.SightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault();
-					drainingSightBattery = (sightMods[key] != null && sightMods[key].Value > 0
+					_drainingSightBattery = (sightMods[key] != null && sightMods[key].Value > 0
 						&& IsInSlot(key.SightMod.Item, BatterySystemPlugin.gameWorld?.MainPlayer.ActiveSlot));
 
 					if (BatterySystemPlugin.batteryDictionary.ContainsKey(key.SightMod.Item))
-						BatterySystemPlugin.batteryDictionary[key.SightMod.Item] = drainingSightBattery;
+						BatterySystemPlugin.batteryDictionary[key.SightMod.Item] = _drainingSightBattery;
 
 					if (BatterySystemConfig.EnableLogs.Value)
-						Logger.LogInfo("Sight on: " + drainingSightBattery + " for " + key + key.SightMod.Item);
+						Logger.LogInfo("Sight on: " + _drainingSightBattery + " for " + key + key.SightMod.Item);
 					// true for finding inactive reticles
 					foreach (CollimatorSight col in key.gameObject.GetComponentsInChildren<CollimatorSight>(true))
 					{
-						col.gameObject.SetActive(drainingSightBattery);
+						col.gameObject.SetActive(_drainingSightBattery);
 					}
 					foreach (OpticSight optic in key.gameObject.GetComponentsInChildren<OpticSight>(true))
 					{
-						optic.enabled = drainingSightBattery;
+						optic.enabled = _drainingSightBattery;
 					}
 				}
 			}
@@ -198,8 +198,11 @@ namespace BatterySystem
 
 	internal class GameStartPatch : ModulePatch
 	{
+		private static FieldInfo _inventoryBotField;
+		private static IBotGame _botGame;
 		protected override MethodBase GetTargetMethod()
 		{
+			_inventoryBotField = AccessTools.Field(typeof(Player), "_inventoryController");
 			return typeof(GameWorld).GetMethod(nameof(GameWorld.OnGameStarted));
 		}
 		[PatchPrefix]
@@ -207,20 +210,23 @@ namespace BatterySystem
 		{
 			// Sub to Event to get and add Bot when they spawn, credit to DrakiaXYZ!
 			//unsubscribe so no duplicates
-			Singleton<IBotGame>.Instance.BotsController.BotSpawner.OnBotCreated -= owner => DrainSpawnedBattery(owner);
-			Singleton<IBotGame>.Instance.BotsController.BotSpawner.OnBotCreated += owner => DrainSpawnedBattery(owner);
+			_botGame = Singleton<IBotGame>.Instance;
+			_botGame.BotsController.BotSpawner.OnBotCreated -= owner => DrainSpawnedBattery(owner);
+			_botGame.BotsController.BotSpawner.OnBotCreated += owner => DrainSpawnedBattery(owner);
 			//Singleton<Player>.Instance.OnSightChangedEvent -= sight => BatterySystem.CheckSightIfDraining(sight);
 			//Singleton<Player>.Instance.OnSightChangedEvent += sight => BatterySystem.CheckSightIfDraining(sight);
 		}
 
 		private static void DrainSpawnedBattery(BotOwner owner)
 		{
-			FieldInfo inventoryBotField = AccessTools.Field(typeof(Player), "_inventoryController");
-			InventoryControllerClass botInventory = (InventoryControllerClass)inventoryBotField.GetValue(owner.GetPlayer);
+			Logger.LogInfo("DrainSpawnedBattery on Bot: " + owner?.GetPlayer + " at " + Time.time);
+			InventoryControllerClass botInventory = (InventoryControllerClass)_inventoryBotField.GetValue(owner.GetPlayer);
+
 			foreach (Item item in botInventory.EquipmentItems)
 			{
 				foreach (ResourceComponent resource in item.GetItemComponentsInChildren<ResourceComponent>())
 				{
+					Logger.LogInfo("Trying to drain" + resource.Item);
 					resource.Value = Random.Range(
 						Mathf.Min(BatterySystemConfig.SpawnDurabilityMin.Value, BatterySystemConfig.SpawnDurabilityMax.Value),
 						Mathf.Max(BatterySystemConfig.SpawnDurabilityMin.Value, BatterySystemConfig.SpawnDurabilityMax.Value));
@@ -237,15 +243,15 @@ namespace BatterySystem
 	}
 	public class PlayerInitPatch : ModulePatch
 	{
-		private static FieldInfo inventoryField = null;
-		private static InventoryControllerClass inventoryController = null;
+		private static FieldInfo _inventoryField = null;
+		private static InventoryControllerClass _inventoryController = null;
 		public static FieldInfo nvgOnField = null;
 		public static FieldInfo thermalOnField = null;
 		public static Slot headWearSlot = null;
 
 		protected override MethodBase GetTargetMethod()
 		{
-			inventoryField = AccessTools.Field(typeof(Player), "_inventoryController");
+			_inventoryField = AccessTools.Field(typeof(Player), "_inventoryController");
 			nvgOnField = AccessTools.Field(typeof(NightVision), "_on");
 			thermalOnField = AccessTools.Field(typeof(ThermalVision), "On");
 			return typeof(Player).GetMethod("Init", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -262,8 +268,8 @@ namespace BatterySystem
 			if (__instance.IsYourPlayer)
 			{
 				BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
-				inventoryController = (InventoryControllerClass)inventoryField.GetValue(__instance); //Player Inventory
-				headWearSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
+				_inventoryController = (InventoryControllerClass)_inventoryField.GetValue(__instance); //Player Inventory
+				headWearSlot = _inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
 			}
 		}
 	}

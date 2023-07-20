@@ -25,8 +25,8 @@ namespace BatterySystem
 	public class BatterySystemPlugin : BaseUnityPlugin
 	{
 		public static GameWorld gameWorld;
-		public static float mainCooldown = 1f;
-		public static Dictionary<string, float> headWearDrainMultiplier = new Dictionary<string, float>();
+		private static float _mainCooldown = 1f;
+		private static Dictionary<string, float> _headWearDrainMultiplier = new Dictionary<string, float>();
 		public static Dictionary<Item, bool> batteryDictionary = new Dictionary<Item, bool>();
 		//resource drain all batteries that are on // using dictionary to help and sync draining batteries
 		void Awake()
@@ -41,19 +41,19 @@ namespace BatterySystem
 			//update dictionary with values
 			//foreach (ItemTemplate template in ItemTemplates)
 			{
-				headWearDrainMultiplier.Add("5c0696830db834001d23f5da", 1f); // PNV-10T Night Vision Goggles, AA Battery
-				headWearDrainMultiplier.Add("5c0558060db834001b735271", 2f); // GPNVG-18 Night Vision goggles, CR123 battery pack
-				headWearDrainMultiplier.Add("5c066e3a0db834001b7353f0", 1f); // Armasight N-15 Night Vision Goggles, single CR123A lithium battery
-				headWearDrainMultiplier.Add("57235b6f24597759bf5a30f1", 0.5f); // AN/PVS-14 Night Vision Monocular, AA Battery
-				headWearDrainMultiplier.Add("5c110624d174af029e69734c", 3f); // T-7 Thermal Goggles with a Night Vision mount, Double AA
+				_headWearDrainMultiplier.Add("5c0696830db834001d23f5da", 1f); // PNV-10T Night Vision Goggles, AA Battery
+				_headWearDrainMultiplier.Add("5c0558060db834001b735271", 2f); // GPNVG-18 Night Vision goggles, CR123 battery pack
+				_headWearDrainMultiplier.Add("5c066e3a0db834001b7353f0", 1f); // Armasight N-15 Night Vision Goggles, single CR123A lithium battery
+				_headWearDrainMultiplier.Add("57235b6f24597759bf5a30f1", 0.5f); // AN/PVS-14 Night Vision Monocular, AA Battery
+				_headWearDrainMultiplier.Add("5c110624d174af029e69734c", 3f); // T-7 Thermal Goggles with a Night Vision mount, Double AA
 			}
 		}
 
 		void Update() // battery is drained in Update() and applied
 		{
-			if (Time.time > mainCooldown && BatterySystemConfig.EnableMod.Value)
+			if (Time.time > _mainCooldown && BatterySystemConfig.EnableMod.Value)
 			{
-				mainCooldown = Time.time + 1f;
+				_mainCooldown = Time.time + 1f;
 				gameWorld = Singleton<GameWorld>.Instance;
 				if (gameWorld == null || gameWorld.MainPlayer == null || !gameWorld.MainPlayer.HealthController.IsAlive) return;
 
@@ -77,7 +77,7 @@ namespace BatterySystem
 					{
 						Mathf.Clamp(BatterySystem.headWearBattery.Value -= 1 / 36f
 								* BatterySystemConfig.DrainMultiplier.Value
-								* headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId], 0, 100);
+								* _headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId], 0, 100);
 					}
 
 					else if (item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault() != null) //for sights

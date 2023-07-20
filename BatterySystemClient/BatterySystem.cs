@@ -12,8 +12,6 @@ using System.Threading.Tasks;
 using BepInEx.Logging;
 using System.Collections.Generic;
 using EFT.CameraControl;
-using EFT.UI.Ragfair;
-using System;
 
 namespace BatterySystem
 {

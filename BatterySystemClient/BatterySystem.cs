@@ -127,10 +127,10 @@ namespace BatterySystem
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
 				Logger.LogInfo("--- BATTERYSYSTEM: Setting sight components at " + Time.time + " ---");
-				Logger.LogInfo("For: " + sightInstance);
+				Logger.LogInfo("For: " + sightInstance.SightMod.Item);
 			}
 			//before applying new sights, remove sights that are not on equipped weapon
-			for(int i = sightMods.Keys.Count - 1; i >= 0; i--)
+			for (int i = sightMods.Keys.Count - 1; i >= 0; i--)
 			{
 				SightModVisualControllers key = sightMods.Keys.ElementAt(i);
 				if (!IsInSlot(key.SightMod.Item, BatterySystemPlugin.gameWorld.MainPlayer.ActiveSlot))
@@ -197,6 +197,45 @@ namespace BatterySystem
 		}
 	}
 
+	internal class GameStartPatch : ModulePatch
+	{
+
+		protected override MethodBase GetTargetMethod()
+		{
+			return typeof(GameWorld).GetMethod(nameof(GameWorld.OnGameStarted));
+		}
+		[PatchPrefix]
+		public static void PatchPrefix()
+		{
+			// Sub to Event to get and add Bot when they spawn, credit to DrakiaXYZ!
+			//unsubscribe so no duplicates
+			Singleton<IBotGame>.Instance.BotsController.BotSpawner.OnBotCreated -= owner => DrainSpawnedBattery(owner);
+			Singleton<IBotGame>.Instance.BotsController.BotSpawner.OnBotCreated += owner => DrainSpawnedBattery(owner);
+		}
+
+		private static void DrainSpawnedBattery(BotOwner owner)
+		{
+			FieldInfo inventoryBotField = AccessTools.Field(typeof(Player), "_inventoryController");
+			InventoryControllerClass botInventory = (InventoryControllerClass)inventoryBotField.GetValue(owner.GetPlayer);
+			foreach (Item item in botInventory.EquipmentItems)
+			{
+
+				foreach (ResourceComponent resource in item.GetItemComponentsInChildren<ResourceComponent>())
+				{
+					resource.Value = Random.Range(
+						Mathf.Min(BatterySystemConfig.SpawnDurabilityMin.Value, BatterySystemConfig.SpawnDurabilityMax.Value),
+						Mathf.Max(BatterySystemConfig.SpawnDurabilityMin.Value, BatterySystemConfig.SpawnDurabilityMax.Value));
+
+					if (BatterySystemConfig.EnableLogs.Value)
+					{
+						Logger.LogInfo("BATTERYSYSTEM: OnBotCreated: " + Time.time);
+						Logger.LogInfo("Checking item from slot: " + item);
+						Logger.LogInfo("Res value: " + resource.Value);
+					}
+				}
+			}
+		}
+	}
 	public class PlayerInitPatch : ModulePatch
 	{
 		private static FieldInfo inventoryField = null;
@@ -214,40 +253,19 @@ namespace BatterySystem
 		}
 
 		[PatchPostfix]
-		private static async void Postfix(Task __result)
+		private static async void Postfix(Player __instance, Task __result)
 		{
 			await __result;
+
 			if (BatterySystemConfig.EnableLogs.Value)
-				Logger.LogInfo("PlayerInitPatch AT " + Time.time);
-			BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
-			inventoryController = (InventoryControllerClass)inventoryField.GetValue(Singleton<GameWorld>.Instance.MainPlayer); //Player Inventory
-			headWearSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
-			// Sub to Event to get and add Bot when they spawn, credit to DrakiaXYZ!
-			//bot.player._inventory.findcomponentsinchildren(resourcecomponent)
-			//resourcecomponent = random 0 - 20
-			//not ran at all yet?
-			Singleton<IBotGame>.Instance.BotsController.BotSpawner.OnBotCreated += owner =>
+				Logger.LogInfo("PlayerInitPatch AT " + Time.time + __instance + Singleton<GameWorld>.Instance.MainPlayer);
+
+			if (__instance == Singleton<GameWorld>.Instance.MainPlayer)
 			{
-				FieldInfo inventoryBotField = AccessTools.Field(typeof(Player), "_inventoryController");
-				InventoryControllerClass botInventory = (InventoryControllerClass)inventoryField.GetValue(owner.GetPlayer);
-				foreach (Item item in botInventory.EquipmentItems)
-				{
-
-					foreach (ResourceComponent resource in item.GetItemComponentsInChildren<ResourceComponent>())
-					{
-						resource.Value = Random.Range(
-							Mathf.Min(BatterySystemConfig.SpawnDurabilityMin.Value, BatterySystemConfig.SpawnDurabilityMax.Value),
-							Mathf.Max(BatterySystemConfig.SpawnDurabilityMin.Value, BatterySystemConfig.SpawnDurabilityMax.Value));
-
-						if (BatterySystemConfig.EnableLogs.Value)
-						{
-							Logger.LogInfo("BATTERYSYSTEM: OnBotCreated: " + Time.time);
-							Logger.LogInfo("Checking item from slot: " + item);
-							Logger.LogInfo("Res value: " + resource.Value);
-						}
-					}
-				}
-			};
+				BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
+				inventoryController = (InventoryControllerClass)inventoryField.GetValue(Singleton<GameWorld>.Instance.MainPlayer); //Player Inventory
+				headWearSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
+			}
 		}
 	}
 

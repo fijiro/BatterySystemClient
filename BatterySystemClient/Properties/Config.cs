@@ -26,12 +26,12 @@ namespace BatterySystem.Configs
 				new ConfigurationManagerAttributes { IsAdvanced = true, Order = 50 }));
 
 			DrainMultiplier = Config.Bind(generalSettings, "Battery Drain Multiplier", 1f,
-				new ConfigDescription("Adjust the drain multiplier when nvg is on. By default a battery lasts an hour.",
-				new AcceptableValueRange<float>(0f, 5f),
+				new ConfigDescription("Adjust the drain multiplier when NVG is on. By default a battery lasts an hour on NVGs and 2.5 hours on sights.",
+				new AcceptableValueRange<float>(0f, 10f),
 				new ConfigurationManagerAttributes { IsAdvanced = false, Order = 0 }));
 			
 			SpawnDurabilityMin = Config.Bind(generalSettings, "Spawn Durability Min", 5,
-				new ConfigDescription("Adjust the minimum durability a battery can spawn on bots.",
+				new ConfigDescription("Adjust the minimum durability a battery can spawn on bots. Batteries have a fixed chance of 20% to spawn.",
 				new AcceptableValueRange<int>(0, 100),
 				new ConfigurationManagerAttributes { IsAdvanced = false, Order = -50 }));
 			

@@ -33,6 +33,7 @@ namespace BatterySystem
 		{
 			BatterySystemConfig.Init(Config);
 			new PlayerInitPatch().Enable();
+			new GameStartPatch().Enable();
 			new ApplyItemPatch().Enable();
 			new SightDevicePatch().Enable();
 			new NvgHeadWearPatch().Enable();

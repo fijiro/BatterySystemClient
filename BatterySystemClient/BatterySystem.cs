@@ -25,6 +25,10 @@ namespace BatterySystem
 		private static bool drainingHeadWearBattery = false;
 		public static ResourceComponent headWearBattery = null;
 
+		protected static Dictionary<SightModVisualControllers, ResourceComponent> sightMods = new Dictionary<SightModVisualControllers, ResourceComponent>();
+		private static bool drainingSightBattery = false;
+
+
 		public static Item GetheadWearSight() // returns the special device goggles that are equipped
 		{
 			if (headWearNvg != null)
@@ -48,9 +52,8 @@ namespace BatterySystem
 			if (GetheadWearSight() != null) // headwear
 				BatterySystemPlugin.batteryDictionary.Add(GetheadWearSight(), false);
 
-			for (int i = sightMods.Keys.Count - 1; i >= 0; i--)
+			foreach (SightModVisualControllers sightController in sightMods.Keys)
 			{
-				SightModVisualControllers sightController = sightMods.Keys.ElementAt(i);
 				//only drain sights that are on equipped weapon
 				if (IsInSlot(sightController.SightMod.Item, BatterySystemPlugin.gameWorld?.MainPlayer.ActiveSlot)
 					&& !BatterySystemPlugin.batteryDictionary.ContainsKey(sightController.SightMod.Item))
@@ -118,9 +121,6 @@ namespace BatterySystem
 				PlayerInitPatch.thermalOnField.SetValue(CameraClass.Instance.ThermalVision, drainingHeadWearBattery);
 			}
 		}
-
-		public static Dictionary<SightModVisualControllers, ResourceComponent> sightMods = new Dictionary<SightModVisualControllers, ResourceComponent>();
-		private static bool drainingSightBattery = false;
 
 		public static void SetSightComponents(SightModVisualControllers sightInstance)
 		{
@@ -219,7 +219,6 @@ namespace BatterySystem
 			InventoryControllerClass botInventory = (InventoryControllerClass)inventoryBotField.GetValue(owner.GetPlayer);
 			foreach (Item item in botInventory.EquipmentItems)
 			{
-
 				foreach (ResourceComponent resource in item.GetItemComponentsInChildren<ResourceComponent>())
 				{
 					resource.Value = Random.Range(
@@ -258,9 +257,9 @@ namespace BatterySystem
 			await __result;
 
 			if (BatterySystemConfig.EnableLogs.Value)
-				Logger.LogInfo("PlayerInitPatch AT " + Time.time + __instance + Singleton<GameWorld>.Instance.MainPlayer);
+				Logger.LogInfo("PlayerInitPatch AT " + Time.time + __instance.name + Singleton<GameWorld>.Instance.MainPlayer.name);
 
-			if (__instance == Singleton<GameWorld>.Instance.MainPlayer)
+			if (__instance.name == Singleton<GameWorld>.Instance.MainPlayer.name)
 			{
 				BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
 				inventoryController = (InventoryControllerClass)inventoryField.GetValue(Singleton<GameWorld>.Instance.MainPlayer); //Player Inventory

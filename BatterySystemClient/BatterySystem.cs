@@ -55,9 +55,6 @@ namespace BatterySystem
 				if (IsInSlot(sightController.SightMod.Item, BatterySystemPlugin.gameWorld?.MainPlayer.ActiveSlot)
 					&& !BatterySystemPlugin.batteryDictionary.ContainsKey(sightController.SightMod.Item))
 					BatterySystemPlugin.batteryDictionary.Add(sightController.SightMod.Item, false);
-				//remove sights that are not in use
-				else
-					sightMods.Remove(sightController);
 			}
 
 			if (BatterySystemConfig.EnableLogs.Value)
@@ -131,6 +128,15 @@ namespace BatterySystem
 			{
 				Logger.LogInfo("--- BATTERYSYSTEM: Setting sight components at " + Time.time + " ---");
 				Logger.LogInfo("For: " + sightInstance);
+			}
+			//before applying new sights, remove sights that are not on equipped weapon
+			for(int i = sightMods.Keys.Count - 1; i >= 0; i--)
+			{
+				SightModVisualControllers key = sightMods.Keys.ElementAt(i);
+				if (!IsInSlot(key.SightMod.Item, BatterySystemPlugin.gameWorld.MainPlayer.ActiveSlot))
+				{
+					sightMods.Remove(key);
+				}
 			}
 
 			if (IsInSlot(sightInstance.SightMod.Item, BatterySystemPlugin.gameWorld.MainPlayer.ActiveSlot))
@@ -222,17 +228,23 @@ namespace BatterySystem
 			//not ran at all yet?
 			Singleton<IBotGame>.Instance.BotsController.BotSpawner.OnBotCreated += owner =>
 			{
-				Logger.LogInfo(Time.time);
-				Logger.LogInfo("OnBotCreated");
 				FieldInfo inventoryBotField = AccessTools.Field(typeof(Player), "_inventoryController");
 				InventoryControllerClass botInventory = (InventoryControllerClass)inventoryField.GetValue(owner.GetPlayer);
 				foreach (Item item in botInventory.EquipmentItems)
 				{
-					Logger.LogInfo("Checking item from slot: " + item);
+
 					foreach (ResourceComponent resource in item.GetItemComponentsInChildren<ResourceComponent>())
 					{
-						resource.Value = Random.Range(0, 20);
-						Logger.LogInfo("Res value: " + resource.Value);
+						resource.Value = Random.Range(
+							Mathf.Min(BatterySystemConfig.SpawnDurabilityMin.Value, BatterySystemConfig.SpawnDurabilityMax.Value),
+							Mathf.Max(BatterySystemConfig.SpawnDurabilityMin.Value, BatterySystemConfig.SpawnDurabilityMax.Value));
+
+						if (BatterySystemConfig.EnableLogs.Value)
+						{
+							Logger.LogInfo("BATTERYSYSTEM: OnBotCreated: " + Time.time);
+							Logger.LogInfo("Checking item from slot: " + item);
+							Logger.LogInfo("Res value: " + resource.Value);
+						}
 					}
 				}
 			};

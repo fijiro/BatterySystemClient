@@ -20,12 +20,11 @@ namespace BatterySystem
 	 * battery recharger - idea by Props
 	 * make batteries uninsurable, because duh
 	 */
-	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.2.0")]
+	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.2.1")]
 	[BepInDependency("com.spt-aki.core", "3.5.8")]
 	public class BatterySystemPlugin : BaseUnityPlugin
 	{
 		public static GameWorld gameWorld;
-		private static IBotGame _botGame;
 		public static float mainCooldown = 1f;
 		public static Dictionary<string, float> headWearDrainMultiplier = new Dictionary<string, float>();
 		public static Dictionary<Item, bool> batteryDictionary = new Dictionary<Item, bool>();

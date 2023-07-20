@@ -32,8 +32,8 @@ namespace BatterySystem
 		void Awake()
 		{
 			BatterySystemConfig.Init(Config);
-			new PlayerInitPatch().Enable();
 			new GameStartPatch().Enable();
+			new PlayerInitPatch().Enable();
 			new ApplyItemPatch().Enable();
 			new SightDevicePatch().Enable();
 			new NvgHeadWearPatch().Enable();

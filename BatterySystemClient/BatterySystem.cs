@@ -25,7 +25,7 @@ namespace BatterySystem
 		private static bool drainingHeadWearBattery = false;
 		public static ResourceComponent headWearBattery = null;
 
-		protected static Dictionary<SightModVisualControllers, ResourceComponent> sightMods = new Dictionary<SightModVisualControllers, ResourceComponent>();
+		public static Dictionary<SightModVisualControllers, ResourceComponent> sightMods = new Dictionary<SightModVisualControllers, ResourceComponent>();
 		private static bool drainingSightBattery = false;
 
 
@@ -154,14 +154,19 @@ namespace BatterySystem
 			GenerateBatteryDictionary();
 		}
 		//foreach sight in database<sight, collimator>: if sight has component with resource then collimator on, else
-		public static void CheckSightIfDraining()
+		public static void CheckSightIfDraining(SightComponent sight = null)
 		{
 			//ERROR:  If reap-ir is on and using canted collimator, enabled optic sight removes collimator effect. find a way to only drain active sight!
 			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			if (BatterySystemConfig.EnableLogs.Value)
-				Logger.LogInfo("--- BATTERYSYSTEM: CHECK Sight battery at " + Time.time + " ---");
-			for (int i = 0; i < sightMods.Keys.Count; i++)
 			{
+				Logger.LogInfo("--- BATTERYSYSTEM: CHECK Sight battery at " + Time.time + " ---");
+				if (sight != null)
+					Logger.LogInfo("Sight From Subscription: " + sight);
+			}
+			//for because modifying sightMods[key]
+			for (int i = 0; i < sightMods.Keys.Count; i++) 
+			{ 
 				SightModVisualControllers key = sightMods.Keys.ElementAt(i);
 				if (key?.SightMod?.Item != null)
 				{
@@ -178,16 +183,10 @@ namespace BatterySystem
 					// true for finding inactive reticles
 					foreach (CollimatorSight col in key.gameObject.GetComponentsInChildren<CollimatorSight>(true))
 					{
-						if (BatterySystemConfig.EnableLogs.Value)
-							Logger.LogInfo("Collimator in sightMod: " + col.gameObject);
-
 						col.gameObject.SetActive(drainingSightBattery);
 					}
 					foreach (OpticSight optic in key.gameObject.GetComponentsInChildren<OpticSight>(true))
 					{
-						if (BatterySystemConfig.EnableLogs.Value)
-							Logger.LogInfo("Optic in sightMod: " + optic.gameObject);
-
 						optic.enabled = drainingSightBattery;
 					}
 				}
@@ -199,7 +198,6 @@ namespace BatterySystem
 
 	internal class GameStartPatch : ModulePatch
 	{
-
 		protected override MethodBase GetTargetMethod()
 		{
 			return typeof(GameWorld).GetMethod(nameof(GameWorld.OnGameStarted));
@@ -211,6 +209,8 @@ namespace BatterySystem
 			//unsubscribe so no duplicates
 			Singleton<IBotGame>.Instance.BotsController.BotSpawner.OnBotCreated -= owner => DrainSpawnedBattery(owner);
 			Singleton<IBotGame>.Instance.BotsController.BotSpawner.OnBotCreated += owner => DrainSpawnedBattery(owner);
+			//Singleton<Player>.Instance.OnSightChangedEvent -= sight => BatterySystem.CheckSightIfDraining(sight);
+			//Singleton<Player>.Instance.OnSightChangedEvent += sight => BatterySystem.CheckSightIfDraining(sight);
 		}
 
 		private static void DrainSpawnedBattery(BotOwner owner)
@@ -257,12 +257,12 @@ namespace BatterySystem
 			await __result;
 
 			if (BatterySystemConfig.EnableLogs.Value)
-				Logger.LogInfo("PlayerInitPatch AT " + Time.time + __instance.name + Singleton<GameWorld>.Instance.MainPlayer.name);
+				Logger.LogInfo("PlayerInitPatch AT " + Time.time + ", IsYourPlayer: " + __instance.IsYourPlayer + ", IsAI: " + __instance.IsAI);
 
-			if (__instance.name == Singleton<GameWorld>.Instance.MainPlayer.name)
+			if (__instance.IsYourPlayer)
 			{
 				BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
-				inventoryController = (InventoryControllerClass)inventoryField.GetValue(Singleton<GameWorld>.Instance.MainPlayer); //Player Inventory
+				inventoryController = (InventoryControllerClass)inventoryField.GetValue(__instance); //Player Inventory
 				headWearSlot = inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
 			}
 		}

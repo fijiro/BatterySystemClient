@@ -12,6 +12,8 @@ using System.Threading.Tasks;
 using BepInEx.Logging;
 using System.Collections.Generic;
 using EFT.CameraControl;
+using EFT.UI.Ragfair;
+using System;
 
 namespace BatterySystem
 {
@@ -96,8 +98,7 @@ namespace BatterySystem
 			_drainingHeadWearBattery = headWearBattery != null && headWearBattery.Value > 0
 				&& (_headWearNvg == null && _headWearThermal != null
 				? (_headWearThermal.Togglable.On && !CameraClass.Instance.ThermalVision.InProcessSwitching)
-				: (_headWearNvg != null && _headWearThermal == null ? _headWearNvg.Togglable.On && !CameraClass.Instance.NightVision.InProcessSwitching
-				: false));
+				: (_headWearNvg != null && _headWearThermal == null && _headWearNvg.Togglable.On && !CameraClass.Instance.NightVision.InProcessSwitching));
 			// headWear has battery with resource installed and headwear (nvg/thermal) isn't switching and is on
 
 			if (BatterySystemConfig.EnableLogs.Value)
@@ -165,8 +166,8 @@ namespace BatterySystem
 					Logger.LogInfo("Sight From Subscription: " + sight);
 			}
 			//for because modifying sightMods[key]
-			for (int i = 0; i < sightMods.Keys.Count; i++) 
-			{ 
+			for (int i = 0; i < sightMods.Keys.Count; i++)
+			{
 				SightModVisualControllers key = sightMods.Keys.ElementAt(i);
 				if (key?.SightMod?.Item != null)
 				{
@@ -198,11 +199,11 @@ namespace BatterySystem
 
 	internal class GameStartPatch : ModulePatch
 	{
-		private static FieldInfo _inventoryBotField;
-		private static IBotGame _botGame;
+		//private static FieldInfo _inventoryBotField;
+		//private static IBotGame _botGame;
 		protected override MethodBase GetTargetMethod()
 		{
-			_inventoryBotField = AccessTools.Field(typeof(Player), "_inventoryController");
+			//_inventoryBotField = AccessTools.Field(typeof(Player), "_inventoryController");
 			return typeof(GameWorld).GetMethod(nameof(GameWorld.OnGameStarted));
 		}
 		[PatchPrefix]
@@ -210,44 +211,22 @@ namespace BatterySystem
 		{
 			// Sub to Event to get and add Bot when they spawn, credit to DrakiaXYZ!
 			//unsubscribe so no duplicates
-			_botGame = Singleton<IBotGame>.Instance;
-			_botGame.BotsController.BotSpawner.OnBotCreated -= owner => DrainSpawnedBattery(owner);
-			_botGame.BotsController.BotSpawner.OnBotCreated += owner => DrainSpawnedBattery(owner);
+			//_botGame = Singleton<IBotGame>.Instance;
+			//_botGame.BotsController.BotSpawner.OnBotCreated -= owner => DrainSpawnedBattery(owner);
+			//_botGame.BotsController.BotSpawner.OnBotCreated += owner => DrainSpawnedBattery(owner);
 			//Singleton<Player>.Instance.OnSightChangedEvent -= sight => BatterySystem.CheckSightIfDraining(sight);
 			//Singleton<Player>.Instance.OnSightChangedEvent += sight => BatterySystem.CheckSightIfDraining(sight);
-		}
-
-		private static void DrainSpawnedBattery(BotOwner owner)
-		{
-			Logger.LogInfo("DrainSpawnedBattery on Bot: " + owner?.GetPlayer + " at " + Time.time);
-			InventoryControllerClass botInventory = (InventoryControllerClass)_inventoryBotField.GetValue(owner.GetPlayer);
-
-			foreach (Item item in botInventory.EquipmentItems)
-			{
-				foreach (ResourceComponent resource in item.GetItemComponentsInChildren<ResourceComponent>())
-				{
-					Logger.LogInfo("Trying to drain" + resource.Item);
-					resource.Value = Random.Range(
-						Mathf.Min(BatterySystemConfig.SpawnDurabilityMin.Value, BatterySystemConfig.SpawnDurabilityMax.Value),
-						Mathf.Max(BatterySystemConfig.SpawnDurabilityMin.Value, BatterySystemConfig.SpawnDurabilityMax.Value));
-
-					if (BatterySystemConfig.EnableLogs.Value)
-					{
-						Logger.LogInfo("BATTERYSYSTEM: OnBotCreated: " + Time.time);
-						Logger.LogInfo("Checking item from slot: " + item);
-						Logger.LogInfo("Res value: " + resource.Value);
-					}
-				}
-			}
 		}
 	}
 	public class PlayerInitPatch : ModulePatch
 	{
 		private static FieldInfo _inventoryField = null;
 		private static InventoryControllerClass _inventoryController = null;
+		private static InventoryControllerClass _botInventory = null;
 		public static FieldInfo nvgOnField = null;
 		public static FieldInfo thermalOnField = null;
 		public static Slot headWearSlot = null;
+		private static readonly System.Random _random = new System.Random();
 
 		protected override MethodBase GetTargetMethod()
 		{
@@ -263,13 +242,38 @@ namespace BatterySystem
 			await __result;
 
 			if (BatterySystemConfig.EnableLogs.Value)
-				Logger.LogInfo("PlayerInitPatch AT " + Time.time + ", IsYourPlayer: " + __instance.IsYourPlayer + ", IsAI: " + __instance.IsAI);
+				Logger.LogInfo("PlayerInitPatch AT " + Time.time + ", IsYourPlayer: " + __instance.IsYourPlayer + ", IsAI: " + __instance.FullIdInfo);
 
 			if (__instance.IsYourPlayer)
 			{
 				BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
 				_inventoryController = (InventoryControllerClass)_inventoryField.GetValue(__instance); //Player Inventory
 				headWearSlot = _inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
+			}
+			else
+			{
+				DrainSpawnedBattery(__instance);
+			}
+		}
+		private static void DrainSpawnedBattery(Player botPlayer)
+		{
+			_botInventory = (InventoryControllerClass)_inventoryField.GetValue(botPlayer);
+
+			foreach (Item item in _botInventory.EquipmentItems)
+			{
+				for (int i = 0; i < item.GetItemComponentsInChildren<ResourceComponent>().Count(); i++)
+				{
+					ResourceComponent resource = item.GetItemComponentsInChildren<ResourceComponent>().ElementAt(i);
+					if (resource.MaxResource > 0)
+						resource.Value = _random.Next(BatterySystemConfig.SpawnDurabilityMin.Value, BatterySystemConfig.SpawnDurabilityMax.Value);
+
+					if (BatterySystemConfig.EnableLogs.Value)
+					{
+						Logger.LogInfo("DrainSpawnedBattery on Bot: " + botPlayer + " at " + Time.time);
+						Logger.LogInfo("Checking item from slot: " + item);
+						Logger.LogInfo("Res value: " + resource.Value);
+					}
+				}
 			}
 		}
 	}

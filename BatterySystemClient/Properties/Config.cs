@@ -31,12 +31,12 @@ namespace BatterySystem.Configs
 				new ConfigurationManagerAttributes { IsAdvanced = false, Order = 0 }));
 			
 			SpawnDurabilityMin = Config.Bind(generalSettings, "Spawn Durability Min", 5,
-				new ConfigDescription("Adjust the minimum durability a battery can spawn on bots.",
+				new ConfigDescription("Adjust the minimum durability a battery can spawn with on bots.",
 				new AcceptableValueRange<int>(0, 100),
 				new ConfigurationManagerAttributes { IsAdvanced = false, Order = -50 }));
 			
-			SpawnDurabilityMin = Config.Bind(generalSettings, "Spawn Durability Max", 15,
-				new ConfigDescription("Adjust the maximum durability a battery can spawn on bots.",
+			SpawnDurabilityMax = Config.Bind(generalSettings, "Spawn Durability Max", 15,
+				new ConfigDescription("Adjust the maximum durability a battery can spawn with on bots. This must be ATLEAST the same value as Spawn Durability Minimum.",
 				new AcceptableValueRange<int>(0, 100),
 				new ConfigurationManagerAttributes { IsAdvanced = false, Order = -100 }));
 

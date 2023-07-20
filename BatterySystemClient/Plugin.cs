@@ -85,7 +85,7 @@ namespace BatterySystem
 						Mathf.Clamp(item.GetItemComponentsInChildren<ResourceComponent>().First().Value -= 1 / 100f
 							* BatterySystemConfig.DrainMultiplier.Value, 0, 100); //2 hr
 					}
-					//Default battery lasts 1 hr * configmulti * itemmulti, itemmulti was dev_raccoon's idea!
+					//Default battery lasts 1 hr * configmulti * itemmulti, itemmulti was Hazelify's idea!
 				}
 			}
 		}

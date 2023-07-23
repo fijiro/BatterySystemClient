@@ -8,17 +8,18 @@ using BatterySystem.Configs;
 using EFT.InventoryLogic;
 using System.Linq;
 using System.Reflection;
+using EFT.UI;
+using EFT.UI.WeaponModding;
 
 namespace BatterySystem
 {
 	/*TODO: 
+	 * Enable switching to iron sights when battery runs out
 	 * equipping and removing headwear gives infinite nvg
 	 * switch to coroutines
 	 * flir does not require batteries, make recharge craft
 	 * Sound when toggling battery runs out or is removed or added
-	 * New model for battery
 	 * battery recharger - idea by Props
-	 * make batteries uninsurable, because duh
 	 */
 	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.2.1")]
 	[BepInDependency("com.spt-aki.core", "3.5.8")]
@@ -34,6 +35,7 @@ namespace BatterySystem
 			BatterySystemConfig.Init(Config);
 			new GameStartPatch().Enable();
 			new PlayerInitPatch().Enable();
+			new ModdingScreenPatch().Enable();
 			new ApplyItemPatch().Enable();
 			new SightDevicePatch().Enable();
 			new NvgHeadWearPatch().Enable();
@@ -55,6 +57,8 @@ namespace BatterySystem
 			{
 				_mainCooldown = Time.time + 1f;
 				gameWorld = Singleton<GameWorld>.Instance;
+				
+				//Singleton<CommonUI>.Instance.EditBuildScreen.gameObject.GetComponentInChildren<ModdingScreenSlotView>(); // UI way
 				if (gameWorld == null || gameWorld.MainPlayer == null || !gameWorld.MainPlayer.HealthController.IsAlive) return;
 
 				BatterySystem.CheckHeadWearIfDraining();

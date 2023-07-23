@@ -12,6 +12,10 @@ using System.Threading.Tasks;
 using BepInEx.Logging;
 using System.Collections.Generic;
 using EFT.CameraControl;
+using EFT.UI;
+using System.CodeDom;
+using System;
+using EFT.UI.Screens;
 
 namespace BatterySystem
 {
@@ -248,7 +252,7 @@ namespace BatterySystem
 				_inventoryController = (InventoryControllerClass)_inventoryField.GetValue(__instance); //Player Inventory
 				headWearSlot = _inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
 			}
-			else
+			else //Spawned bots have their bal-, uh, batteries, drained
 			{
 				DrainSpawnedBattery(__instance);
 			}
@@ -273,6 +277,49 @@ namespace BatterySystem
 					}
 				}
 			}
+		}
+	}
+
+	//GClass697.GetBoneForSlot(EFT.InventoryLogic.IContainer container)
+	public class ModdingScreenPatch : ModulePatch
+	{
+		private static FieldInfo _slotFieldInfo = null;
+		private static Slot[] _slot_0 = null;
+		private static ItemObserveScreen<EditBuildScreen.GClass2746, EditBuildScreen> itemObserveScreen = null;
+		protected override MethodBase GetTargetMethod()
+		{
+
+			_slotFieldInfo = AccessTools.Field(typeof(ItemObserveScreen<EditBuildScreen.GClass2746, EditBuildScreen>), "slot_0");
+			return typeof(ItemObserveScreen<EditBuildScreen.GClass2746, EditBuildScreen>).GetMethod("method_5", BindingFlags.Instance | BindingFlags.NonPublic);
+		}
+
+		[PatchPostfix]
+		static void Postfix() //ref LootItemClass __instance
+		{
+			itemObserveScreen = UnityEngine.Object.FindObjectOfType<ItemObserveScreen<EditBuildScreen.GClass2746, EditBuildScreen>>();
+			Logger.LogInfo("--- BATTERYSYSTEM: ItemObserveScreen: " + Time.time + " ---");
+			Logger.LogInfo("item: " + itemObserveScreen);
+			_slot_0 = (Slot[])_slotFieldInfo.GetValue(itemObserveScreen);
+			for (int i = _slot_0.Length - 1; i >= 0; i--)
+			{
+				if (hasBatterySlot(_slot_0[i]))
+				{
+					//remove _slot_0[i].Remove()
+					Logger.LogInfo("Trying to remove item: " + _slot_0[i].ContainedItem);
+					_slot_0[i].RemoveItem();
+					Logger.LogInfo("Removed item " + _slot_0[i].ContainedItem);
+				}
+			}
+			Logger.LogInfo(_slot_0.ToArray().ToString());
+			Logger.LogInfo("---------------------------------------------");
+
+		}
+		private static bool hasBatterySlot(Slot slot)
+		{
+			if (slot.ContainedItem.Template.Parent._id == "55818acf4bdc2dde698b456b" //compact collimator
+				|| slot.ContainedItem.Template.Parent._id == "55818ad54bdc2ddc698b4569") // collimator
+				return true;
+			else return false;
 		}
 	}
 
@@ -324,6 +371,7 @@ namespace BatterySystem
 			}
 		}
 	}
+
 	public class NvgHeadWearPatch : ModulePatch
 	{
 		protected override MethodBase GetTargetMethod()

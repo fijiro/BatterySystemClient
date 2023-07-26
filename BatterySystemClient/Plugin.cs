@@ -21,7 +21,7 @@ namespace BatterySystem
 	 * Sound when toggling battery runs out or is removed or added
 	 * battery recharger - idea by Props
 	 */
-	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.2.1")]
+	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.2.2")]
 	[BepInDependency("com.spt-aki.core", "3.5.8")]
 	public class BatterySystemPlugin : BaseUnityPlugin
 	{
@@ -33,8 +33,9 @@ namespace BatterySystem
 		void Awake()
 		{
 			BatterySystemConfig.Init(Config);
-			new GameStartPatch().Enable();
+			//new GameStartPatch().Enable();
 			new PlayerInitPatch().Enable();
+			new GetBoneForSlotPatch().Enable();
 			new ModdingScreenPatch().Enable();
 			new ApplyItemPatch().Enable();
 			new SightDevicePatch().Enable();
@@ -59,8 +60,7 @@ namespace BatterySystem
 				gameWorld = Singleton<GameWorld>.Instance;
 				
 				//Singleton<CommonUI>.Instance.EditBuildScreen.gameObject.GetComponentInChildren<ModdingScreenSlotView>(); // UI way
-				if (gameWorld == null || gameWorld.MainPlayer == null || !gameWorld.MainPlayer.HealthController.IsAlive) return;
-
+				if (gameWorld?.MainPlayer == null || gameWorld.MainPlayer is HideoutPlayer || !gameWorld.MainPlayer.HealthController.IsAlive) return;
 				BatterySystem.CheckHeadWearIfDraining();
 				BatterySystem.CheckSightIfDraining();
 				DrainBatteries();

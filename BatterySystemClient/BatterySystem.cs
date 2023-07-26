@@ -13,9 +13,10 @@ using BepInEx.Logging;
 using System.Collections.Generic;
 using EFT.CameraControl;
 using EFT.UI;
-using System.CodeDom;
 using System;
 using EFT.UI.Screens;
+using EFT.InventoryLogic.BackendInventoryInteraction;
+using System.Net;
 
 namespace BatterySystem
 {
@@ -82,7 +83,7 @@ namespace BatterySystem
 
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
-				Logger.LogInfo("--- BATTERYSYSTEM: SetHeadWearComponents: " + Time.time + " ---");
+				Logger.LogInfo("--- BATTERYSYSTEM: Setting HeadWear components at: " + Time.time + " ---");
 				Logger.LogInfo("At: " + Time.time);
 				Logger.LogInfo("headWearItem: " + headWearItem);
 				Logger.LogInfo("headWearNVG: " + _headWearNvg);
@@ -163,7 +164,7 @@ namespace BatterySystem
 			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
-				Logger.LogInfo("--- BATTERYSYSTEM: CHECK Sight battery at " + Time.time + " ---");
+				Logger.LogInfo("--- BATTERYSYSTEM: Checking Sight battery at " + Time.time + " ---");
 				if (sight != null)
 					Logger.LogInfo("Sight From Subscription: " + sight);
 			}
@@ -182,7 +183,7 @@ namespace BatterySystem
 						BatterySystemPlugin.batteryDictionary[key.SightMod.Item] = _drainingSightBattery;
 
 					if (BatterySystemConfig.EnableLogs.Value)
-						Logger.LogInfo("Sight on: " + _drainingSightBattery + " for " + key + key.SightMod.Item);
+						Logger.LogInfo("Sight on: " + _drainingSightBattery + " for " + key.name);
 					// true for finding inactive reticles
 					foreach (CollimatorSight col in key.gameObject.GetComponentsInChildren<CollimatorSight>(true))
 					{
@@ -190,6 +191,9 @@ namespace BatterySystem
 					}
 					foreach (OpticSight optic in key.gameObject.GetComponentsInChildren<OpticSight>(true))
 					{
+						if (key.SightMod.Item.TemplateId == "REAP-IR")
+							continue;
+
 						optic.enabled = _drainingSightBattery;
 					}
 				}
@@ -220,6 +224,7 @@ namespace BatterySystem
 			//Singleton<Player>.Instance.OnSightChangedEvent += sight => BatterySystem.CheckSightIfDraining(sight);
 		}
 	}
+
 	public class PlayerInitPatch : ModulePatch
 	{
 		private static FieldInfo _inventoryField = null;
@@ -260,9 +265,9 @@ namespace BatterySystem
 		private static void DrainSpawnedBattery(Player botPlayer)
 		{
 			_botInventory = (InventoryControllerClass)_inventoryField.GetValue(botPlayer);
-
 			foreach (Item item in _botInventory.EquipmentItems)
 			{
+				//if item is in holster or firstprimaryweapon slot then>>
 				for (int i = 0; i < item.GetItemComponentsInChildren<ResourceComponent>().Count(); i++)
 				{
 					ResourceComponent resource = item.GetItemComponentsInChildren<ResourceComponent>().ElementAt(i);
@@ -279,8 +284,48 @@ namespace BatterySystem
 			}
 		}
 	}
+	//GClass697.GetBoneForSlot(EFT.InventoryLogic.IContainer container) throws the error
+	public class GetBoneForSlotPatch : ModulePatch
+	{
+		private static GClass697.GClass698 _gClass = new GClass697.GClass698();
+		protected override MethodBase GetTargetMethod()
+		{
+			return typeof(GClass697).GetMethod(nameof(GClass697.GetBoneForSlot));
+		}
 
-	//GClass697.GetBoneForSlot(EFT.InventoryLogic.IContainer container)
+		[PatchPrefix]
+		static void Prefix(ref GClass697 __instance, IContainer container)
+		{
+			//is compact collimator)
+			Logger.LogInfo("");
+			Logger.LogInfo("--- BatterySystem: GetBoneForSlot at " + Time.time + " ---");
+			Logger.LogInfo("GameObject: " + __instance.GameObject);
+			Logger.LogInfo(" Container: " + container + container.ID);
+			Logger.LogInfo("Items: " + container.Items.FirstOrDefault());
+			//if bone == null then add a new tranform
+			if (container?.Items.FirstOrDefault()?.Template._id == "5a6f58f68dc32e000a311390") //Glock FS
+			{
+
+				Logger.LogInfo("Setting _gClass to " + __instance.ContainerBones[container].Item);
+				_gClass.Bone = __instance.ContainerBones[container].Bone;
+				_gClass.Item = __instance.ContainerBones[container].Item;
+				_gClass.ItemView = __instance.ContainerBones[container].ItemView;
+				Logger.LogInfo("GClass Item: " + _gClass.Item);
+				Logger.LogInfo("GClass Bone: " + _gClass.Bone);
+				Logger.LogInfo("GClass ItemView: " + _gClass.ItemView);
+				
+			}
+			if (ModdingScreenPatch.IsCollimator(container?.ParentItem.Template.Parent._id))
+			{
+				
+				Logger.LogWarning("Trying to get bone for battery slot!");
+				_gClass.Bone.right += Vector3.one;
+				__instance.ContainerBones.Add(container, _gClass);
+			}
+			Logger.LogInfo("---------------------------------------------");
+		}
+	}
+
 	public class ModdingScreenPatch : ModulePatch
 	{
 		private static FieldInfo _slotFieldInfo = null;
@@ -288,13 +333,12 @@ namespace BatterySystem
 		private static ItemObserveScreen<EditBuildScreen.GClass2746, EditBuildScreen> itemObserveScreen = null;
 		protected override MethodBase GetTargetMethod()
 		{
-
 			_slotFieldInfo = AccessTools.Field(typeof(ItemObserveScreen<EditBuildScreen.GClass2746, EditBuildScreen>), "slot_0");
-			return typeof(ItemObserveScreen<EditBuildScreen.GClass2746, EditBuildScreen>).GetMethod("method_5", BindingFlags.Instance | BindingFlags.NonPublic);
+			return typeof(ItemObserveScreen<EditBuildScreen.GClass2746, EditBuildScreen>).GetMethod("method_6", BindingFlags.Instance | BindingFlags.NonPublic);
 		}
 
-		[PatchPostfix]
-		static void Postfix() //ref LootItemClass __instance
+		[PatchPrefix]
+		static void Prefix(LootItemClass weapon)
 		{
 			itemObserveScreen = UnityEngine.Object.FindObjectOfType<ItemObserveScreen<EditBuildScreen.GClass2746, EditBuildScreen>>();
 			Logger.LogInfo("--- BATTERYSYSTEM: ItemObserveScreen: " + Time.time + " ---");
@@ -302,22 +346,21 @@ namespace BatterySystem
 			_slot_0 = (Slot[])_slotFieldInfo.GetValue(itemObserveScreen);
 			for (int i = _slot_0.Length - 1; i >= 0; i--)
 			{
-				if (hasBatterySlot(_slot_0[i]))
+				Logger.LogInfo("Slot: " + _slot_0[i] + " Item: " + _slot_0[i].ContainedItem);
+				if (IsCollimator(_slot_0[i].ParentItem?.Template.Parent._id))
 				{
-					//remove _slot_0[i].Remove()
-					Logger.LogInfo("Trying to remove item: " + _slot_0[i].ContainedItem);
-					_slot_0[i].RemoveItem();
-					Logger.LogInfo("Removed item " + _slot_0[i].ContainedItem);
+					//_slot_0[i].RemoveItem();
+					Logger.LogInfo("Removed item " + _slot_0[i]);
+					//continue;
 				}
 			}
-			Logger.LogInfo(_slot_0.ToArray().ToString());
 			Logger.LogInfo("---------------------------------------------");
 
 		}
-		private static bool hasBatterySlot(Slot slot)
+		public static bool IsCollimator(string id)
 		{
-			if (slot.ContainedItem.Template.Parent._id == "55818acf4bdc2dde698b456b" //compact collimator
-				|| slot.ContainedItem.Template.Parent._id == "55818ad54bdc2ddc698b4569") // collimator
+			if (id == "55818acf4bdc2dde698b456b" //compact collimator
+				|| id == "55818ad54bdc2ddc698b4569") // collimator
 				return true;
 			else return false;
 		}

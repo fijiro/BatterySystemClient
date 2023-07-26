@@ -15,7 +15,7 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
+    <DebugType>portable</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
@@ -69,4 +69,12 @@
     <Compile Include="Properties\ConfigurationManagerAttributes.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>copy "$(TargetPath)" "E:\SPT-DEBUG\BepInEx\plugins\Jiro-BatterySystem\$(TargetName).dll"
+if $(ConfigurationName) == Debug (
+    copy "$(ProjectDir)$(OutDir)$(TargetName).pdb" "E:\SPT-DEBUG\BepInEx\plugins\Jiro-BatterySystem\$(TargetName).pdb"
+) else (
+    del "E:\SPT-DEBUG\BepInEx\plugins\Jiro-BatterySystem\$(TargetName).pdb"
+)</PostBuildEvent>
+  </PropertyGroup>
 </Project>

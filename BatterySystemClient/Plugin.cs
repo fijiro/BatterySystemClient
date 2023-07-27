@@ -21,7 +21,7 @@ namespace BatterySystem
 	 * Sound when toggling battery runs out or is removed or added
 	 * battery recharger - idea by Props
 	 */
-	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.2.2")]
+	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.3.0")]
 	[BepInDependency("com.spt-aki.core", "3.5.8")]
 	public class BatterySystemPlugin : BaseUnityPlugin
 	{
@@ -35,9 +35,8 @@ namespace BatterySystem
 			BatterySystemConfig.Init(Config);
 			//new GameStartPatch().Enable();
 			new PlayerInitPatch().Enable();
-			new SetCompressorPatch().Enable();
 			new GetBoneForSlotPatch().Enable();
-			new ModdingScreenPatch().Enable();
+			//new ModdingScreenPatch().Enable();
 			new ApplyItemPatch().Enable();
 			new SightDevicePatch().Enable();
 			new NvgHeadWearPatch().Enable();
@@ -59,16 +58,27 @@ namespace BatterySystem
 			{
 				_mainCooldown = Time.time + 1f;
 				gameWorld = Singleton<GameWorld>.Instance;
-				
+
 				//Singleton<CommonUI>.Instance.EditBuildScreen.gameObject.GetComponentInChildren<ModdingScreenSlotView>(); // UI way
 				if (gameWorld?.MainPlayer == null || gameWorld.MainPlayer is HideoutPlayer || !gameWorld.MainPlayer.HealthController.IsAlive) return;
 				BatterySystem.CheckEarPieceIfDraining();
 				BatterySystem.CheckHeadWearIfDraining();
 				BatterySystem.CheckSightIfDraining();
 				DrainBatteries();
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("GunsVolume", -400f);
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("OcclusionVolume", );
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("EnvironmentVolume", 0f);
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("AmbientOccluded", totalVolume + Plugin.AmbientOccluded);
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorResonance", totalDistortion + Plugin.CompressorResonance);
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", 0f);
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorDistortion", totalDistortion + Plugin.CompressorDistortion);
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorLowpass", totalDistortion + Plugin.CompressorDistortion);
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("AmbientVolume", headsetAmbientVol);
+
+				//Item itemInHands = inventoryControllerClass.ItemInHands;
+				//List<string> equippedTpl = inventoryControllerClass.Inventory.EquippedInSlotsTemplateIds;
 			}
-			//Item itemInHands = inventoryControllerClass.ItemInHands;
-			//List<string> equippedTpl = inventoryControllerClass.Inventory.EquippedInSlotsTemplateIds;
+
 		}
 
 		private static void DrainBatteries()

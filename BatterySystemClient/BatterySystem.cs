@@ -32,7 +32,7 @@ namespace BatterySystem
 
 		private static Item _earPieceItem = null;
 		private static ResourceComponent _earPieceBattery = null;
-		private static bool _earPieceWasDraining;
+		private static bool _drainingEarPieceBattery = false;
 		public static float compressorMakeup;
 
 
@@ -60,6 +60,9 @@ namespace BatterySystem
 		{
 			BatterySystemPlugin.batteryDictionary.Clear();
 
+			if (_earPieceBattery != null) // earpiece
+				BatterySystemPlugin.batteryDictionary.Add(_earPieceItem, false);
+
 			if (GetheadWearSight() != null) // headwear
 				BatterySystemPlugin.batteryDictionary.Add(GetheadWearSight(), false);
 
@@ -79,11 +82,11 @@ namespace BatterySystem
 				Logger.LogInfo("---------------------------------------------");
 			}
 		}
+
 		public static void SetEarPieceComponents()
 		{
 			_earPieceItem = PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).Items?.FirstOrDefault();
 			_earPieceBattery = _earPieceItem?.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault();
-			_earPieceWasDraining = false;
 
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
@@ -92,20 +95,34 @@ namespace BatterySystem
 				Logger.LogInfo("Battery in Earpiece: " + _earPieceBattery?.Item);
 				Logger.LogInfo("Battery Resource: " + _earPieceBattery);
 			}
+			GenerateBatteryDictionary();
 		}
+
 		public static void CheckEarPieceIfDraining()
 		{
-			if (_earPieceBattery != null && _earPieceBattery.Value > 0 && !_earPieceWasDraining)
+			if (_earPieceItem != null && _earPieceBattery != null && _earPieceBattery.Value > 0)
 			{
-				_earPieceWasDraining = true;
 				Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", compressorMakeup);
+				_drainingEarPieceBattery = true;
 			}
-			else if (_earPieceWasDraining)
+			else if (_earPieceItem != null)
 			{
-				_earPieceWasDraining = false;
 				Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", 0f);
+				_drainingEarPieceBattery = false;
+			}
+
+			if (_earPieceBattery != null && BatterySystemPlugin.batteryDictionary.ContainsKey(_earPieceItem))
+				BatterySystemPlugin.batteryDictionary[_earPieceItem] = _drainingEarPieceBattery;
+
+			if (BatterySystemConfig.EnableLogs.Value)
+			{
+				Logger.LogInfo("--- BATTERYSYSTEM: Checking EarPiece battery: " + Time.time + " ---");
+				Logger.LogInfo("EarPiece: " + _earPieceItem);
+				Logger.LogInfo("Battery level " + _earPieceBattery?.Value + ", Is draining: " + _drainingEarPieceBattery);
+				Logger.LogInfo("---------------------------------------------");
 			}
 		}
+
 		public static void SetHeadWearComponents()
 		{
 			headWearItem = PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Headwear).Items?.FirstOrDefault(); // default null else headwear
@@ -282,6 +299,8 @@ namespace BatterySystem
 			{
 				BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
 				_inventoryController = (InventoryControllerClass)_inventoryField.GetValue(__instance); //Player Inventory
+				Singleton<BetterAudio>.Instance.Master.GetFloat("CompressorMakeup", out BatterySystem.compressorMakeup);
+				BatterySystem.SetEarPieceComponents();
 			}
 			else //Spawned bots have their bal-, uh, batteries, drained
 			{
@@ -314,22 +333,11 @@ namespace BatterySystem
 			return _inventoryController.Inventory.Equipment.GetSlot(slot);
 		}
 	}
-	public class SetCompressorPatch : ModulePatch
-	{
-		protected override MethodBase GetTargetMethod()
-		{
-			return typeof(BetterAudio).GetMethod(nameof(BetterAudio.SetCompressor));
-		}
-		[PatchPostfix]
-		private static void Postfix() //GClass2204 template, BetterAudio __instance
-		{
-			Singleton<BetterAudio>.Instance.Master.GetFloat("CompressorMakeup", out BatterySystem.compressorMakeup);
-		}
-	}
+
 	//GClass697.GetBoneForSlot(EFT.InventoryLogic.IContainer container) throws the error
 	public class GetBoneForSlotPatch : ModulePatch
 	{
-		private static GClass697.GClass698 _gClass = new GClass697.GClass698();
+		//private static GClass697.GClass698 _gClass;
 		protected override MethodBase GetTargetMethod()
 		{
 			return typeof(GClass697).GetMethod(nameof(GClass697.GetBoneForSlot));
@@ -338,7 +346,7 @@ namespace BatterySystem
 		[PatchPrefix]
 		static void Prefix(ref GClass697 __instance, IContainer container)
 		{
-			//is compact collimator)
+			//is compact collimator
 			Logger.LogInfo("");
 			Logger.LogInfo("--- BatterySystem: GetBoneForSlot at " + Time.time + " ---");
 			Logger.LogInfo("GameObject: " + __instance.GameObject);
@@ -348,16 +356,15 @@ namespace BatterySystem
 			if (ModdingScreenPatch.IsCollimator(container?.Items.FirstOrDefault())) //replace collimator slot
 			{
 				Logger.LogInfo("Setting _gClass to " + __instance.ContainerBones[container].Item);
-				_gClass = __instance.ContainerBones[container];
-				Logger.LogInfo("GClass Item: " + _gClass.Item);
-				Logger.LogInfo("GClass Bone: " + _gClass.Bone);
-				Logger.LogInfo("GClass ItemView: " + _gClass.ItemView);
+				Logger.LogInfo("GClass Item: " + __instance.ContainerBones[container].Item);
+				Logger.LogInfo("GClass Bone: " + __instance.ContainerBones[container].Bone);
+				Logger.LogInfo("GClass ItemView: " + __instance.ContainerBones[container].ItemView);
 			}
 			if (!__instance.ContainerBones.ContainsKey(container) && ModdingScreenPatch.IsCollimator(container?.ParentItem))
 			{
 
 				Logger.LogWarning("Trying to get bone for battery slot!");
-				__instance.ContainerBones.Add(container, _gClass);
+				__instance.ContainerBones.Add(container, __instance.ContainerBones[container]);
 			}
 			Logger.LogInfo("---------------------------------------------");
 		}
@@ -375,7 +382,7 @@ namespace BatterySystem
 		}
 
 		[PatchPrefix]
-		static void Prefix(LootItemClass weapon)
+		static void Prefix() //LootItemClass weapon
 		{
 			itemObserveScreen = UnityEngine.Object.FindObjectOfType<ItemObserveScreen<EditBuildScreen.GClass2746, EditBuildScreen>>();
 			Logger.LogInfo("--- BATTERYSYSTEM: ItemObserveScreen: " + Time.time + " ---");
@@ -416,13 +423,17 @@ namespace BatterySystem
 			{
 				if (BatterySystemConfig.EnableLogs.Value)
 				{
-					Logger.LogInfo("BATTERYSYSTEM: APPLYING CONTAINED ITEM AT: " + Time.time);
+					Logger.LogInfo("BATTERYSYSTEM: ApplyItemPatch at: " + Time.time);
 					Logger.LogInfo("Slot parent: " + __instance.ParentItem);
 				}
-				if (BatterySystem.IsInSlot(__instance.ParentItem, PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece)))
+				if (BatterySystem.IsInSlot(__instance.ContainedItem, PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece)))
 				{
 					if (BatterySystemConfig.EnableLogs.Value)
+					{
+						Logger.LogInfo("Setting CompressorMakeup to: " + BatterySystem.compressorMakeup + " at: " + Time.time);
 						Logger.LogInfo("Slot is child of EarPiece!");
+					}
+					Singleton<BetterAudio>.Instance.Master.GetFloat("CompressorMakeup", out BatterySystem.compressorMakeup);
 					BatterySystem.SetEarPieceComponents();
 				}
 				else if (BatterySystem.IsInSlot(__instance.ParentItem, PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Headwear)))

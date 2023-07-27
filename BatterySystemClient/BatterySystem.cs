@@ -30,6 +30,12 @@ namespace BatterySystem
 		private static bool _drainingHeadWearBattery = false;
 		public static ResourceComponent headWearBattery = null;
 
+		private static Item _earPieceItem = null;
+		private static ResourceComponent _earPieceBattery = null;
+		private static bool _earPieceWasDraining;
+		public static float compressorMakeup;
+
+
 		public static Dictionary<SightModVisualControllers, ResourceComponent> sightMods = new Dictionary<SightModVisualControllers, ResourceComponent>();
 		private static bool _drainingSightBattery = false;
 
@@ -73,10 +79,36 @@ namespace BatterySystem
 				Logger.LogInfo("---------------------------------------------");
 			}
 		}
+		public static void SetEarPieceComponents()
+		{
+			_earPieceItem = PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).Items?.FirstOrDefault();
+			_earPieceBattery = _earPieceItem?.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault();
+			_earPieceWasDraining = false;
 
+			if (BatterySystemConfig.EnableLogs.Value)
+			{
+				Logger.LogInfo("--- BATTERYSYSTEM: Setting EarPiece components at: " + Time.time + " ---");
+				Logger.LogInfo("headWearItem: " + _earPieceItem);
+				Logger.LogInfo("Battery in Earpiece: " + _earPieceBattery?.Item);
+				Logger.LogInfo("Battery Resource: " + _earPieceBattery);
+			}
+		}
+		public static void CheckEarPieceIfDraining()
+		{
+			if (_earPieceBattery != null && _earPieceBattery.Value > 0 && !_earPieceWasDraining)
+			{
+				_earPieceWasDraining = true;
+				Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", compressorMakeup);
+			}
+			else if (_earPieceWasDraining)
+			{
+				_earPieceWasDraining = false;
+				Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", 0f);
+			}
+		}
 		public static void SetHeadWearComponents()
 		{
-			headWearItem = PlayerInitPatch.headWearSlot.Items?.FirstOrDefault(); // default null else headwear
+			headWearItem = PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Headwear).Items?.FirstOrDefault(); // default null else headwear
 			_headWearNvg = headWearItem?.GetItemComponentsInChildren<NightVisionComponent>().FirstOrDefault(); //default null else nvg item
 			_headWearThermal = headWearItem?.GetItemComponentsInChildren<ThermalVisionComponent>().FirstOrDefault(); //default null else thermal item
 			headWearBattery = GetheadWearSight()?.Parent.Item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault(); //default null else resource
@@ -84,7 +116,6 @@ namespace BatterySystem
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
 				Logger.LogInfo("--- BATTERYSYSTEM: Setting HeadWear components at: " + Time.time + " ---");
-				Logger.LogInfo("At: " + Time.time);
 				Logger.LogInfo("headWearItem: " + headWearItem);
 				Logger.LogInfo("headWearNVG: " + _headWearNvg);
 				Logger.LogInfo("headWearParent: " + GetheadWearSight()?.Parent.Item);
@@ -92,7 +123,6 @@ namespace BatterySystem
 				Logger.LogInfo("Battery in HeadWear: " + headWearBattery?.Item);
 				Logger.LogInfo("Battery Resource: " + headWearBattery);
 			}
-
 			GenerateBatteryDictionary();
 		}
 
@@ -158,16 +188,13 @@ namespace BatterySystem
 			GenerateBatteryDictionary();
 		}
 		//foreach sight in database<sight, collimator>: if sight has component with resource then collimator on, else
-		public static void CheckSightIfDraining(SightComponent sight = null)
+		public static void CheckSightIfDraining()
 		{
 			//ERROR:  If reap-ir is on and using canted collimator, enabled optic sight removes collimator effect. find a way to only drain active sight!
 			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			if (BatterySystemConfig.EnableLogs.Value)
-			{
 				Logger.LogInfo("--- BATTERYSYSTEM: Checking Sight battery at " + Time.time + " ---");
-				if (sight != null)
-					Logger.LogInfo("Sight From Subscription: " + sight);
-			}
+
 			//for because modifying sightMods[key]
 			for (int i = 0; i < sightMods.Keys.Count; i++)
 			{
@@ -184,14 +211,15 @@ namespace BatterySystem
 
 					if (BatterySystemConfig.EnableLogs.Value)
 						Logger.LogInfo("Sight on: " + _drainingSightBattery + " for " + key.name);
-					// true for finding inactive reticles
+
+					// true for finding inactive gameobject reticles
 					foreach (CollimatorSight col in key.gameObject.GetComponentsInChildren<CollimatorSight>(true))
 					{
 						col.gameObject.SetActive(_drainingSightBattery);
 					}
 					foreach (OpticSight optic in key.gameObject.GetComponentsInChildren<OpticSight>(true))
 					{
-						if (key.SightMod.Item.TemplateId == "REAP-IR")
+						if (key.SightMod.Item.TemplateId == "REAP-IR") // why is this here lmao
 							continue;
 
 						optic.enabled = _drainingSightBattery;
@@ -202,7 +230,7 @@ namespace BatterySystem
 				Logger.LogInfo("---------------------------------------------");
 		}
 	}
-
+	//unused for now
 	internal class GameStartPatch : ModulePatch
 	{
 		//private static FieldInfo _inventoryBotField;
@@ -232,7 +260,6 @@ namespace BatterySystem
 		private static InventoryControllerClass _botInventory = null;
 		public static FieldInfo nvgOnField = null;
 		public static FieldInfo thermalOnField = null;
-		public static Slot headWearSlot = null;
 		private static readonly System.Random _random = new System.Random();
 
 		protected override MethodBase GetTargetMethod()
@@ -255,7 +282,6 @@ namespace BatterySystem
 			{
 				BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
 				_inventoryController = (InventoryControllerClass)_inventoryField.GetValue(__instance); //Player Inventory
-				headWearSlot = _inventoryController.Inventory.Equipment.GetSlot(EquipmentSlot.Headwear);
 			}
 			else //Spawned bots have their bal-, uh, batteries, drained
 			{
@@ -283,6 +309,22 @@ namespace BatterySystem
 				}
 			}
 		}
+		public static Slot GetEquipmentSlot(EquipmentSlot slot)
+		{
+			return _inventoryController.Inventory.Equipment.GetSlot(slot);
+		}
+	}
+	public class SetCompressorPatch : ModulePatch
+	{
+		protected override MethodBase GetTargetMethod()
+		{
+			return typeof(BetterAudio).GetMethod(nameof(BetterAudio.SetCompressor));
+		}
+		[PatchPostfix]
+		private static void Postfix() //GClass2204 template, BetterAudio __instance
+		{
+			Singleton<BetterAudio>.Instance.Master.GetFloat("CompressorMakeup", out BatterySystem.compressorMakeup);
+		}
 	}
 	//GClass697.GetBoneForSlot(EFT.InventoryLogic.IContainer container) throws the error
 	public class GetBoneForSlotPatch : ModulePatch
@@ -303,23 +345,18 @@ namespace BatterySystem
 			Logger.LogInfo(" Container: " + container + container.ID);
 			Logger.LogInfo("Items: " + container.Items.FirstOrDefault());
 			//if bone == null then add a new tranform
-			if (container?.Items.FirstOrDefault()?.Template._id == "5a6f58f68dc32e000a311390") //Glock FS
+			if (ModdingScreenPatch.IsCollimator(container?.Items.FirstOrDefault())) //replace collimator slot
 			{
-
 				Logger.LogInfo("Setting _gClass to " + __instance.ContainerBones[container].Item);
-				_gClass.Bone = __instance.ContainerBones[container].Bone;
-				_gClass.Item = __instance.ContainerBones[container].Item;
-				_gClass.ItemView = __instance.ContainerBones[container].ItemView;
+				_gClass = __instance.ContainerBones[container];
 				Logger.LogInfo("GClass Item: " + _gClass.Item);
 				Logger.LogInfo("GClass Bone: " + _gClass.Bone);
 				Logger.LogInfo("GClass ItemView: " + _gClass.ItemView);
-				
 			}
-			if (ModdingScreenPatch.IsCollimator(container?.ParentItem.Template.Parent._id))
+			if (!__instance.ContainerBones.ContainsKey(container) && ModdingScreenPatch.IsCollimator(container?.ParentItem))
 			{
-				
+
 				Logger.LogWarning("Trying to get bone for battery slot!");
-				_gClass.Bone.right += Vector3.one;
 				__instance.ContainerBones.Add(container, _gClass);
 			}
 			Logger.LogInfo("---------------------------------------------");
@@ -347,20 +384,19 @@ namespace BatterySystem
 			for (int i = _slot_0.Length - 1; i >= 0; i--)
 			{
 				Logger.LogInfo("Slot: " + _slot_0[i] + " Item: " + _slot_0[i].ContainedItem);
-				if (IsCollimator(_slot_0[i].ParentItem?.Template.Parent._id))
+				if (IsCollimator(_slot_0[i].ParentItem.Parent.Item))
 				{
 					//_slot_0[i].RemoveItem();
-					Logger.LogInfo("Removed item " + _slot_0[i]);
-					//continue;
+					Logger.LogInfo("Removing slot: " + _slot_0[i]);
 				}
 			}
 			Logger.LogInfo("---------------------------------------------");
 
 		}
-		public static bool IsCollimator(string id)
+		public static bool IsCollimator(Item item)
 		{
-			if (id == "55818acf4bdc2dde698b456b" //compact collimator
-				|| id == "55818ad54bdc2ddc698b4569") // collimator
+			if (item != null && (item.Template.Parent._id == "55818acf4bdc2dde698b456b" //compact collimator
+				|| item.Template.Parent._id == "55818ad54bdc2ddc698b4569")) // collimator
 				return true;
 			else return false;
 		}
@@ -383,7 +419,13 @@ namespace BatterySystem
 					Logger.LogInfo("BATTERYSYSTEM: APPLYING CONTAINED ITEM AT: " + Time.time);
 					Logger.LogInfo("Slot parent: " + __instance.ParentItem);
 				}
-				if (BatterySystem.IsInSlot(PlayerInitPatch.headWearSlot.ContainedItem, PlayerInitPatch.headWearSlot))
+				if (BatterySystem.IsInSlot(__instance.ParentItem, PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece)))
+				{
+					if (BatterySystemConfig.EnableLogs.Value)
+						Logger.LogInfo("Slot is child of EarPiece!");
+					BatterySystem.SetEarPieceComponents();
+				}
+				else if (BatterySystem.IsInSlot(__instance.ParentItem, PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Headwear)))
 				{ //if item in headwear slot applied
 					if (BatterySystemConfig.EnableLogs.Value)
 						Logger.LogInfo("Slot is child of HeadWear!");

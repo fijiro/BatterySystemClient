@@ -35,6 +35,7 @@ namespace BatterySystem
 			BatterySystemConfig.Init(Config);
 			//new GameStartPatch().Enable();
 			new PlayerInitPatch().Enable();
+			new SetCompressorPatch().Enable();
 			new GetBoneForSlotPatch().Enable();
 			new ModdingScreenPatch().Enable();
 			new ApplyItemPatch().Enable();
@@ -61,6 +62,7 @@ namespace BatterySystem
 				
 				//Singleton<CommonUI>.Instance.EditBuildScreen.gameObject.GetComponentInChildren<ModdingScreenSlotView>(); // UI way
 				if (gameWorld?.MainPlayer == null || gameWorld.MainPlayer is HideoutPlayer || !gameWorld.MainPlayer.HealthController.IsAlive) return;
+				BatterySystem.CheckEarPieceIfDraining();
 				BatterySystem.CheckHeadWearIfDraining();
 				BatterySystem.CheckSightIfDraining();
 				DrainBatteries();

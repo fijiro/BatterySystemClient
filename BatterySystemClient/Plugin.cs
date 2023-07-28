@@ -36,6 +36,7 @@ namespace BatterySystem
 			//new GameStartPatch().Enable();
 			new PlayerInitPatch().Enable();
 			new GetBoneForSlotPatch().Enable();
+			new UpdatePhonesPatch().Enable();
 			//new ModdingScreenPatch().Enable();
 			new ApplyItemPatch().Enable();
 			new SightDevicePatch().Enable();
@@ -65,20 +66,10 @@ namespace BatterySystem
 				BatterySystem.CheckHeadWearIfDraining();
 				BatterySystem.CheckSightIfDraining();
 				DrainBatteries();
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("GunsVolume", -400f);
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("OcclusionVolume", );
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("EnvironmentVolume", 0f);
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("AmbientOccluded", totalVolume + Plugin.AmbientOccluded);
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorResonance", totalDistortion + Plugin.CompressorResonance);
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", 0f);
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorDistortion", totalDistortion + Plugin.CompressorDistortion);
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorLowpass", totalDistortion + Plugin.CompressorDistortion);
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("AmbientVolume", headsetAmbientVol);
 
 				//Item itemInHands = inventoryControllerClass.ItemInHands;
 				//List<string> equippedTpl = inventoryControllerClass.Inventory.EquippedInSlotsTemplateIds;
 			}
-
 		}
 
 		private static void DrainBatteries()

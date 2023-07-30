@@ -25,50 +25,44 @@ namespace BatterySystem
 	[BepInDependency("com.spt-aki.core", "3.5.8")]
 	public class BatterySystemPlugin : BaseUnityPlugin
 	{
-		public static GameWorld gameWorld;
 		private static float _mainCooldown = 1f;
 		private static Dictionary<string, float> _headWearDrainMultiplier = new Dictionary<string, float>();
 		public static Dictionary<Item, bool> batteryDictionary = new Dictionary<Item, bool>();
 		//resource drain all batteries that are on // using dictionary to help and sync draining batteries
-		void Awake()
+		public void Awake()
 		{
 			BatterySystemConfig.Init(Config);
-			//new GameStartPatch().Enable();
-			new PlayerInitPatch().Enable();
-			new GetBoneForSlotPatch().Enable();
-			new UpdatePhonesPatch().Enable();
-			//new ModdingScreenPatch().Enable();
-			new ApplyItemPatch().Enable();
-			new SightDevicePatch().Enable();
-			new NvgHeadWearPatch().Enable();
-			new ThermalHeadWearPatch().Enable();
-			//update dictionary with values
-			//foreach (ItemTemplate template in ItemTemplates)
+			if (BatterySystemConfig.EnableMod.Value)
 			{
-				_headWearDrainMultiplier.Add("5c0696830db834001d23f5da", 1f); // PNV-10T Night Vision Goggles, AA Battery
-				_headWearDrainMultiplier.Add("5c0558060db834001b735271", 2f); // GPNVG-18 Night Vision goggles, CR123 battery pack
-				_headWearDrainMultiplier.Add("5c066e3a0db834001b7353f0", 1f); // Armasight N-15 Night Vision Goggles, single CR123A lithium battery
-				_headWearDrainMultiplier.Add("57235b6f24597759bf5a30f1", 0.5f); // AN/PVS-14 Night Vision Monocular, AA Battery
-				_headWearDrainMultiplier.Add("5c110624d174af029e69734c", 3f); // T-7 Thermal Goggles with a Night Vision mount, Double AA
+				new PlayerInitPatch().Enable();
+				new GetBoneForSlotPatch().Enable();
+				new UpdatePhonesPatch().Enable();
+				new ApplyItemPatch().Enable();
+				new SightDevicePatch().Enable();
+				new NvgHeadWearPatch().Enable();
+				new ThermalHeadWearPatch().Enable();
+				//foreach (ItemTemplate template in ItemTemplates) if(template has batteryslot)
+				{
+					_headWearDrainMultiplier.Add("5c0696830db834001d23f5da", 1f); // PNV-10T Night Vision Goggles, AA Battery
+					_headWearDrainMultiplier.Add("5c0558060db834001b735271", 2f); // GPNVG-18 Night Vision goggles, CR123 battery pack
+					_headWearDrainMultiplier.Add("5c066e3a0db834001b7353f0", 1f); // Armasight N-15 Night Vision Goggles, single CR123A lithium battery
+					_headWearDrainMultiplier.Add("57235b6f24597759bf5a30f1", 0.5f); // AN/PVS-14 Night Vision Monocular, AA Battery
+					_headWearDrainMultiplier.Add("5c110624d174af029e69734c", 3f); // T-7 Thermal Goggles with a Night Vision mount, Double AA
+				}
 			}
 		}
 
-		void Update() // battery is drained in Update() and applied
+		public void Update() // battery is drained in Update() and applied
 		{
 			if (Time.time > _mainCooldown && BatterySystemConfig.EnableMod.Value)
 			{
 				_mainCooldown = Time.time + 1f;
-				gameWorld = Singleton<GameWorld>.Instance;
 
 				//Singleton<CommonUI>.Instance.EditBuildScreen.gameObject.GetComponentInChildren<ModdingScreenSlotView>(); // UI way
-				if (gameWorld?.MainPlayer == null || gameWorld.MainPlayer is HideoutPlayer || !gameWorld.MainPlayer.HealthController.IsAlive) return;
-				BatterySystem.CheckEarPieceIfDraining();
+				if (Singleton<GameWorld>.Instance?.MainPlayer == null || Singleton<GameWorld>.Instance.MainPlayer is HideoutPlayer || !Singleton<GameWorld>.Instance.MainPlayer.HealthController.IsAlive) return;
 				BatterySystem.CheckHeadWearIfDraining();
 				BatterySystem.CheckSightIfDraining();
 				DrainBatteries();
-
-				//Item itemInHands = inventoryControllerClass.ItemInHands;
-				//List<string> equippedTpl = inventoryControllerClass.Inventory.EquippedInSlotsTemplateIds;
 			}
 		}
 
@@ -78,20 +72,28 @@ namespace BatterySystem
 			{
 				if (batteryDictionary[item]) // == true
 				{
-					if (BatterySystem.headWearBattery != null && item.IsChildOf(BatterySystem.headWearItem)
-						&& BatterySystem.headWearItem.GetItemComponentsInChildren<TogglableComponent>().FirstOrDefault()?.On == true)
-					//for headwear nvg/t-7
-					{
-						Mathf.Clamp(BatterySystem.headWearBattery.Value -= 1 / 36f
-								* BatterySystemConfig.DrainMultiplier.Value
-								* _headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId], 0, 100);
-					}
-					else if (item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault() != null) //for sights
-					{
-						Mathf.Clamp(item.GetItemComponentsInChildren<ResourceComponent>().First().Value -= 1 / 100f
-							* BatterySystemConfig.DrainMultiplier.Value, 0, 100); //2 hr
-					}
+					BatterySystem.Logger.LogInfo("Check drain item: " + item);
 					//Default battery lasts 1 hr * configmulti * itemmulti, itemmulti was Hazelify's idea!
+					if (BatterySystem.headWearBattery != null && item.IsChildOf(BatterySystem.headWearItem) //for headwear nvg/t-7
+						&& BatterySystem.headWearItem.GetItemComponentsInChildren<TogglableComponent>().FirstOrDefault()?.On == true)
+					
+					{
+						BatterySystem.headWearBattery.Value -= 1 / 36f
+								* BatterySystemConfig.DrainMultiplier.Value
+								* _headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId];
+					}
+					else if (item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault() != null) //for sights + earpiece
+					{
+						BatterySystem.Logger.LogInfo("Draining item resource: " + item.GetItemComponentsInChildren<ResourceComponent>().First().Item);
+						item.GetItemComponentsInChildren<ResourceComponent>().First().Value -= 1 / 100f
+							* BatterySystemConfig.DrainMultiplier.Value; //2 hr
+					}
+
+					if(item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault()?.Value < 0)
+					{
+						BatterySystem.CheckEarPieceIfDraining();
+						item.GetItemComponentsInChildren<ResourceComponent>().First().Value = 0f;
+					}
 				}
 			}
 		}

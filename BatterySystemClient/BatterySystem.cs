@@ -318,17 +318,17 @@ namespace BatterySystem
 		}
 	}
 
-	//GClass697.GetBoneForSlot(EFT.InventoryLogic.IContainer container) throws the error
+	//GClass707.GetBoneForSlot(EFT.InventoryLogic.IContainer container) throws the error
 	public class GetBoneForSlotPatch : ModulePatch
 	{
-		private static GClass697.GClass698 _gClass = new GClass697.GClass698();
+		private static GClass707.GClass708 _gClass = new GClass707.GClass708();
 		protected override MethodBase GetTargetMethod()
 		{
-			return typeof(GClass697).GetMethod(nameof(GClass697.GetBoneForSlot));
+			return typeof(GClass707).GetMethod(nameof(GClass707.GetBoneForSlot));
 		}
 
 		[PatchPrefix]
-		public static void Prefix(ref GClass697 __instance, IContainer container)
+		public static void Prefix(ref GClass707 __instance, IContainer container)
 		{
 			//is compact collimator
 			Logger.LogInfo("");

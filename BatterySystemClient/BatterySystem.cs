@@ -379,41 +379,7 @@ namespace BatterySystem
 			BatterySystem.SetEarPieceComponents();
 		}
 	}
-	/*
-	public class ModdingScreenPatch : ModulePatch
-	{
-		private static FieldInfo _slotFieldInfo = null;
-		private static Slot[] _slot_0 = null;
-		private static ItemObserveScreen<EditBuildScreen.GClass2746, EditBuildScreen> itemObserveScreen = null;
-		protected override MethodBase GetTargetMethod()
-		{
-			_slotFieldInfo = AccessTools.Field(typeof(ItemObserveScreen<EditBuildScreen.GClass2746, EditBuildScreen>), "slot_0");
-			return typeof(ItemObserveScreen<EditBuildScreen.GClass2746, EditBuildScreen>).GetMethod("method_6", BindingFlags.Instance | BindingFlags.NonPublic);
-		}
 
-		[PatchPrefix]
-		public static void Prefix() //LootItemClass weapon
-		{
-			itemObserveScreen = UnityEngine.Object.FindObjectOfType<ItemObserveScreen<EditBuildScreen.GClass2746, EditBuildScreen>>();
-			Logger.LogInfo("--- BATTERYSYSTEM: ItemObserveScreen: " + Time.time + " ---");
-			Logger.LogInfo("item: " + itemObserveScreen);
-			_slot_0 = (Slot[])_slotFieldInfo.GetValue(itemObserveScreen);
-			for (int i = _slot_0.Length - 1; i >= 0; i--)
-			{
-				Logger.LogInfo("Slot: " + _slot_0[i] + " Item: " + _slot_0[i].ContainedItem);
-				if (IsCollimator(_slot_0[i].ParentItem.Parent.Item))
-				{
-					Logger.LogInfo("Removing slot: " + _slot_0[i]);
-					// /////////////////////////////////// ERROR HERE? RemoveItem causes some goofy shit to happen
-					_slot_0 = _slot_0.Where((_, j) => j != i).ToArray();
-				}
-			}
-			Logger.LogInfo("---------------------------------------------");
-
-		}
-		
-	}
-	*/
 	public class ApplyItemPatch : ModulePatch
 	{
 		protected override MethodBase GetTargetMethod()
@@ -469,7 +435,7 @@ namespace BatterySystem
 		static void Postfix(ref SightModVisualControllers __instance)
 		{
 			//only sights on equipped weapon are added
-			if (Singleton<GameWorld>.Instance != null && BatterySystem.IsInSlot(__instance.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot))
+			if (Singleton<GameWorld>.Instance?.MainPlayer?.HealthController.IsAlive == true && BatterySystem.IsInSlot(__instance.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot))
 			{
 				BatterySystem.SetSightComponents(__instance);
 			}

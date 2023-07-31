@@ -28,6 +28,7 @@ namespace BatterySystem
 		private static float _mainCooldown = 1f;
 		private static Dictionary<string, float> _headWearDrainMultiplier = new Dictionary<string, float>();
 		public static Dictionary<Item, bool> batteryDictionary = new Dictionary<Item, bool>();
+		private static ResourceComponent res;
 		//resource drain all batteries that are on // using dictionary to help and sync draining batteries
 		public void Awake()
 		{
@@ -82,13 +83,12 @@ namespace BatterySystem
 								* BatterySystemConfig.DrainMultiplier.Value
 								* _headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId];
 					}
-					else if (item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault() != null) //for sights + earpiece
+					else if (item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault() != null) //for sights + earpiece
 					{
-						BatterySystem.Logger.LogInfo("Draining item resource: " + item.GetItemComponentsInChildren<ResourceComponent>().First().Item);
-						item.GetItemComponentsInChildren<ResourceComponent>().First().Value -= 1 / 100f
+						BatterySystem.Logger.LogInfo("Draining item resource: " + item.GetItemComponentsInChildren<ResourceComponent>(false).First().Item);
+						item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value -= 1 / 100f
 							* BatterySystemConfig.DrainMultiplier.Value; //2 hr
 					}
-
 					if(item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault()?.Value < 0)
 					{
 						BatterySystem.CheckEarPieceIfDraining();

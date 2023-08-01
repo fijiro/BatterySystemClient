@@ -12,13 +12,6 @@ using System.Threading.Tasks;
 using BepInEx.Logging;
 using System.Collections.Generic;
 using EFT.CameraControl;
-using EFT.UI;
-using System;
-using EFT.UI.Screens;
-using EFT.InventoryLogic.BackendInventoryInteraction;
-using System.Net;
-using EFT.DataProviding;
-using UnityEngine.Audio;
 
 namespace BatterySystem
 {
@@ -114,7 +107,7 @@ namespace BatterySystem
 			else if (_earPieceItem != null)
 			{
 				Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", 0f);
-				Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", -10f);
+				Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", compressor - 15f);
 				Singleton<BetterAudio>.Instance.Master.SetFloat("MainVolume", -10f);
 				_drainingEarPieceBattery = false;
 			}
@@ -208,7 +201,7 @@ namespace BatterySystem
 				// if sight is already in dictionary, dont add it
 				if (!sightMods.Keys.Any(key => key.SightMod.Item == sightInstance.SightMod.Item)
 					&& (sightInstance.gameObject.GetComponentsInChildren<CollimatorSight>(true).FirstOrDefault() != null
-					|| sightInstance.SightMod.Item.TemplateId == "5a1eaa87fcdbcb001865f75e")) //reap-ir
+					|| sightInstance.SightMod.Item.Template.Parent._id == "55818aeb4bdc2ddc698b456a")) //Special Scope
 				{
 					sightMods.Add(sightInstance, sightInstance.SightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault());
 				}
@@ -362,7 +355,7 @@ namespace BatterySystem
 		[PatchPostfix]
 		public static void PatchPostfix() //BetterAudio __instance
 		{
-			if (Singleton<GameWorld>.Instance?.MainPlayer != null)
+			if (Singleton<GameWorld>.Instance != null)
 			{
 				if (BatterySystemConfig.EnableLogs.Value)
 					Logger.LogInfo("UpdatePhonesPatch at " + Time.time);
@@ -383,7 +376,7 @@ namespace BatterySystem
 		[PatchPostfix]
 		static void Postfix(ref Slot __instance) // limit to only player asap
 		{
-			if (Singleton<GameWorld>.Instance?.MainPlayer != null)
+			if (Singleton<GameWorld>.Instance != null)
 			{
 				if (BatterySystemConfig.EnableLogs.Value)
 				{

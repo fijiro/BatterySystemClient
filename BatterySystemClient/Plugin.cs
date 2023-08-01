@@ -7,9 +7,6 @@ using HarmonyLib;
 using BatterySystem.Configs;
 using EFT.InventoryLogic;
 using System.Linq;
-using System.Reflection;
-using EFT.UI;
-using EFT.UI.WeaponModding;
 
 namespace BatterySystem
 {
@@ -59,7 +56,8 @@ namespace BatterySystem
 				_mainCooldown = Time.time + 1f;
 
 				//Singleton<CommonUI>.Instance.EditBuildScreen.gameObject.GetComponentInChildren<ModdingScreenSlotView>(); // UI way
-				if (Singleton<GameWorld>.Instance?.MainPlayer.HealthController.IsAlive != true || Singleton<GameWorld>.Instance?.MainPlayer is HideoutPlayer) return;
+				// || Singleton<GameWorld>.Instance.MainPlayer is HideoutPlayer
+				if (Singleton<GameWorld>.Instance != null) return;
 				BatterySystem.CheckHeadWearIfDraining();
 				BatterySystem.CheckSightIfDraining();
 				DrainBatteries();

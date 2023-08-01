@@ -102,32 +102,38 @@ namespace BatterySystem
 
 		public static void CheckEarPieceIfDraining()
 		{
+			//headset has charged battery installed
 			if (_earPieceBattery != null && _earPieceBattery.Value > 0)
 			{
-				Logger.LogInfo("Turning Headset on! ");
 				Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", compressorMakeup);
 				Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", compressor);
 				Singleton<BetterAudio>.Instance.Master.SetFloat("MainVolume", 0f);
 				_drainingEarPieceBattery = true;
 			}
+			//headset has no battery
 			else if (_earPieceItem != null)
 			{
-				Logger.LogInfo("Turning Headset off! ");
 				Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", 0f);
-				Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", BatterySystemConfig.CompressorMixerVolume.Value);
-				Singleton<BetterAudio>.Instance.Master.SetFloat("MainVolume", BatterySystemConfig.MainMixerVolume.Value);
-
+				Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", -10f);
+				Singleton<BetterAudio>.Instance.Master.SetFloat("MainVolume", -10f);
 				_drainingEarPieceBattery = false;
 			}
-
-			if (_earPieceBattery != null && BatterySystemPlugin.batteryDictionary.ContainsKey(_earPieceItem))
+			//no headset equipped
+			else
+			{
+				Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", compressorMakeup);
+				Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", compressor);
+				Singleton<BetterAudio>.Instance.Master.SetFloat("MainVolume", 0f);
+				_drainingEarPieceBattery = false;
+			}
+			if (_earPieceItem != null && BatterySystemPlugin.batteryDictionary.ContainsKey(_earPieceItem))
 				BatterySystemPlugin.batteryDictionary[_earPieceItem] = _drainingEarPieceBattery;
 
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
 				Logger.LogInfo("--- BATTERYSYSTEM: Checking EarPiece battery: " + Time.time + " ---");
 				Logger.LogInfo("EarPiece: " + _earPieceItem);
-				Logger.LogInfo("Battery level " + _earPieceBattery?.Value + ", Is draining: " + _drainingEarPieceBattery);
+				Logger.LogInfo("Battery level " + _earPieceBattery?.Value + ", draining " + _drainingEarPieceBattery);
 				Logger.LogInfo("---------------------------------------------");
 			}
 		}
@@ -189,13 +195,13 @@ namespace BatterySystem
 			for (int i = sightMods.Keys.Count - 1; i >= 0; i--)
 			{
 				SightModVisualControllers key = sightMods.Keys.ElementAt(i);
-				if (!IsInSlot(key.SightMod.Item, Singleton<GameWorld>.Instance.MainPlayer.ActiveSlot))
+				if (!IsInSlot(key.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot))
 				{
 					sightMods.Remove(key);
 				}
 			}
 
-			if (IsInSlot(sightInstance.SightMod.Item, Singleton<GameWorld>.Instance.MainPlayer.ActiveSlot))
+			if (IsInSlot(sightInstance.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot))
 			{
 				if (BatterySystemConfig.EnableLogs.Value)
 					Logger.LogInfo("Sight Found: " + sightInstance.SightMod.Item);
@@ -212,8 +218,7 @@ namespace BatterySystem
 		}
 		public static void CheckSightIfDraining()
 		{
-			//ERROR:  If reap-ir is on and using canted collimator, enabled optic sight removes collimator effect. find a way to only drain active sight!
-			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			//ERROR:  If reap-ir is on and using canted collimator, enabled optic sight removes collimator effect. find a way to only drain active sight! ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			if (BatterySystemConfig.EnableLogs.Value)
 				Logger.LogInfo("--- BATTERYSYSTEM: Checking Sight battery at " + Time.time + " ---");
 
@@ -275,20 +280,19 @@ namespace BatterySystem
 		{
 			await __result;
 			if (BatterySystemConfig.EnableLogs.Value)
-				Logger.LogInfo("PlayerInitPatch AT " + Time.time + ", IsYourPlayer: " + __instance.IsYourPlayer + ", IsAI: " + __instance.FullIdInfo);
+				Logger.LogInfo("PlayerInitPatch AT " + Time.time + ", IsYourPlayer: " + __instance.IsYourPlayer + ", ID: " + __instance.FullIdInfo);
 
 			if (__instance.IsYourPlayer)
 			{
 				_inventoryController = (InventoryControllerClass)_inventoryField.GetValue(__instance); //Player Inventory
 				BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
-				//Singleton<Player>.Instance.OnSightChangedEvent -= sight => BatterySystem.CheckSightIfDraining();
-				//Singleton<Player>.Instance.OnSightChangedEvent += sight => BatterySystem.CheckSightIfDraining();
+												 //Singleton<Player>.Instance.OnSightChangedEvent -= sight => BatterySystem.CheckSightIfDraining();
+												 //Singleton<Player>.Instance.OnSightChangedEvent += sight => BatterySystem.CheckSightIfDraining();
 			}
 			else //Spawned bots have their bal-, uh, batteries, drained
 			{
 				DrainSpawnedBattery(__instance);
 			}
-			Logger.LogInfo("---------------------------------------------");
 		}
 
 		private static void DrainSpawnedBattery(Player botPlayer)
@@ -330,33 +334,22 @@ namespace BatterySystem
 		[PatchPrefix]
 		public static void Prefix(ref GClass707 __instance, IContainer container)
 		{
-			//is compact collimator
-			Logger.LogInfo("");
-			Logger.LogInfo("--- BatterySystem: GetBoneForSlot at " + Time.time + " ---");
-			Logger.LogInfo("GameObject: " + __instance.GameObject);
-			Logger.LogInfo(" Container: " + container + container.ID);
-			Logger.LogInfo("Items: " + container.Items.FirstOrDefault());
-			//because battery slots dont have a real slot to get transform from, add a null transform
 			if (!__instance.ContainerBones.ContainsKey(container) && container.ID == "mod_equipment")
 			{
 				_gClass.Bone = null;
 				_gClass.Item = null;
 				_gClass.ItemView = null;
-				Logger.LogWarning("Trying to get bone for battery slot!");
-				Logger.LogInfo("GClass Item: " + _gClass.Item);
-				Logger.LogInfo("GClass Bone: " + _gClass.Bone);
-				Logger.LogInfo("GClass ItemView: " + _gClass.ItemView);
-				
+				if (BatterySystemConfig.EnableLogs.Value)
+				{
+					Logger.LogInfo("--- BatterySystem: GetBoneForSlot at " + Time.time + " ---");
+					Logger.LogInfo("GameObject: " + __instance.GameObject);
+					Logger.LogInfo(" Container: " + container);
+					Logger.LogInfo("Items: " + container.Items.FirstOrDefault());
+					Logger.LogWarning("Trying to get bone for battery slot!");
+					Logger.LogInfo("---------------------------------------------");
+				}
 				__instance.ContainerBones.Add(container, _gClass);
 			}
-			Logger.LogInfo("---------------------------------------------");
-		}
-		public static bool IsCollimator(Item item)
-		{
-			if (item != null && (item.Template.Parent._id == "55818acf4bdc2dde698b456b" //compact collimator
-				|| item.Template.Parent._id == "55818ad54bdc2ddc698b4569")) // collimator
-				return true;
-			else return false;
 		}
 	}
 
@@ -369,14 +362,14 @@ namespace BatterySystem
 		[PatchPostfix]
 		public static void PatchPostfix() //BetterAudio __instance
 		{
-			if (Singleton<GameWorld>.Instance == null || Singleton<GameWorld>.Instance.MainPlayer == null)
-				return;
-			Logger.LogInfo("");
-			Logger.LogInfo("UpdatePhonesPatch at " + Time.time);
-			Logger.LogInfo(Singleton<GameWorld>.Instantiated + Singleton<GameWorld>.Instance.MainPlayer.FullIdInfo);
-			Singleton<BetterAudio>.Instance.Master.GetFloat("Compressor", out BatterySystem.compressor);
-			Singleton<BetterAudio>.Instance.Master.GetFloat("CompressorMakeup", out BatterySystem.compressorMakeup);
-			BatterySystem.SetEarPieceComponents();
+			if (Singleton<GameWorld>.Instance?.MainPlayer != null)
+			{
+				if (BatterySystemConfig.EnableLogs.Value)
+					Logger.LogInfo("UpdatePhonesPatch at " + Time.time);
+				Singleton<BetterAudio>.Instance.Master.GetFloat("Compressor", out BatterySystem.compressor);
+				Singleton<BetterAudio>.Instance.Master.GetFloat("CompressorMakeup", out BatterySystem.compressorMakeup);
+				BatterySystem.SetEarPieceComponents();
+			}
 		}
 	}
 
@@ -390,7 +383,7 @@ namespace BatterySystem
 		[PatchPostfix]
 		static void Postfix(ref Slot __instance) // limit to only player asap
 		{
-			if (Singleton<GameWorld>.Instance != null && Singleton<GameWorld>.Instance.MainPlayer?.HealthController.IsAlive == true)
+			if (Singleton<GameWorld>.Instance?.MainPlayer != null)
 			{
 				if (BatterySystemConfig.EnableLogs.Value)
 				{
@@ -435,7 +428,7 @@ namespace BatterySystem
 		static void Postfix(ref SightModVisualControllers __instance)
 		{
 			//only sights on equipped weapon are added
-			if (Singleton<GameWorld>.Instance?.MainPlayer?.HealthController.IsAlive == true && BatterySystem.IsInSlot(__instance.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot))
+			if (BatterySystem.IsInSlot(__instance.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot))
 			{
 				BatterySystem.SetSightComponents(__instance);
 			}
@@ -452,7 +445,7 @@ namespace BatterySystem
 		[PatchPostfix]
 		static void Postfix(ref NightVision __instance)
 		{
-			if (__instance.name == "FPS Camera" && Singleton<GameWorld>.Instance?.MainPlayer?.HealthController.IsAlive == true)
+			if (__instance.name == "FPS Camera" && Singleton<GameWorld>.Instance?.MainPlayer != null)
 			{
 				BatterySystem.SetHeadWearComponents();
 				//temp workaround kek. have to do a coroutine that triggers after InProcessSwitching
@@ -470,7 +463,7 @@ namespace BatterySystem
 		[PatchPostfix]
 		static void Postfix(ref ThermalVision __instance)
 		{
-			if (__instance.name == "FPS Camera" && Singleton<GameWorld>.Instance?.MainPlayer?.HealthController.IsAlive == true)
+			if (__instance.name == "FPS Camera" && Singleton<GameWorld>.Instance?.MainPlayer != null)
 			{
 				BatterySystem.SetHeadWearComponents();
 			}

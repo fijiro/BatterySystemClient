@@ -45,14 +45,17 @@ namespace BatterySystem.Configs
 					new ConfigDescription("Adjust the maximum durability a battery can spawn with on bots. This must be ATLEAST the same value as Spawn Durability Minimum.",
 					new AcceptableValueRange<int>(0, 100),
 					new ConfigurationManagerAttributes { IsAdvanced = false, Order = -100 }));
-				CompressorMixerVolume = Config.Bind(generalSettings, "CompressorMixerVolume", -0f,
+				/*
+				CompressorMixerVolume = Config.Bind(generalSettings, "CompressorMixerVolume", -3f,
 					new ConfigDescription("",
 					new AcceptableValueRange<float>(-30f, 10f),
 					new ConfigurationManagerAttributes { IsAdvanced = false, Order = -180 }));
+
 				MainMixerVolume = Config.Bind(generalSettings, "MainMixerVolume", -0f,
 					new ConfigDescription("",
 					new AcceptableValueRange<float>(-30f, 10f),
 					new ConfigurationManagerAttributes { IsAdvanced = false, Order = -230 }));
+				*/
 			}
 		}
 	}

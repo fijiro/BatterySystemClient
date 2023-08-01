@@ -79,6 +79,12 @@ if $(ConfigurationName) == Debug (
     copy "$(ProjectDir)$(OutDir)$(TargetName).pdb" "E:\SPT-DEBUG\BepInEx\plugins\Jiro-BatterySystem\$(TargetName).pdb"
 ) else (
     del "E:\SPT-DEBUG\BepInEx\plugins\Jiro-BatterySystem\$(TargetName).pdb"
+)
+copy "$(TargetPath)" "E:\SPT-AKI\BepInEx\plugins\Jiro-BatterySystem\$(TargetName).dll"
+if $(ConfigurationName) == Debug (
+    copy "$(ProjectDir)$(OutDir)$(TargetName).pdb" "E:\SPT-AKI\BepInEx\plugins\Jiro-BatterySystem\$(TargetName).pdb"
+) else (
+    del "E:\SPT-AKI\BepInEx\plugins\Jiro-BatterySystem\$(TargetName).pdb"
 )</PostBuildEvent>
   </PropertyGroup>
 </Project>

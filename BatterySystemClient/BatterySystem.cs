@@ -56,7 +56,7 @@ namespace BatterySystem
 			BatterySystemPlugin.batteryDictionary.Clear();
 
 			if (_earPieceItem != null) // earpiece
-				BatterySystemPlugin.batteryDictionary.Add(_earPieceItem, false);
+				BatterySystemPlugin.batteryDictionary.Add(_earPieceItem, _drainingEarPieceBattery);
 
 			if (GetheadWearSight() != null) // headwear
 				BatterySystemPlugin.batteryDictionary.Add(GetheadWearSight(), false);
@@ -89,8 +89,8 @@ namespace BatterySystem
 				Logger.LogInfo("Battery in Earpiece: " + _earPieceBattery?.Item);
 				Logger.LogInfo("Battery Resource: " + _earPieceBattery);
 			}
-			GenerateBatteryDictionary();
 			CheckEarPieceIfDraining();
+			GenerateBatteryDictionary();
 		}
 
 		public static void CheckEarPieceIfDraining()

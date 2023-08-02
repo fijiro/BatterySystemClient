@@ -78,10 +78,12 @@ namespace BatterySystem
 					}
 					else if (item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault() != null) //for sights + earpiece
 					{
+						BatterySystem.Logger.LogInfo("Draining item: " + item + 
+							item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault());
 						item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value -= Mathf.Clamp(1 / 100f
 							* BatterySystemConfig.DrainMultiplier.Value, 0f, 100f); //2 hr
 
-						if (item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value == 0 && item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).ContainedItem))
+						if (item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value == 0f && item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).ContainedItem))
 						{
 							BatterySystem.CheckEarPieceIfDraining();
 						}

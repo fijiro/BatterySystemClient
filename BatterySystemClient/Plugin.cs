@@ -38,7 +38,6 @@ namespace BatterySystem
 				new SightDevicePatch().Enable();
 				new NvgHeadWearPatch().Enable();
 				new ThermalHeadWearPatch().Enable();
-				//foreach (ItemTemplate template in ItemTemplates) if(template has batteryslot)
 				{
 					_headWearDrainMultiplier.Add("5c0696830db834001d23f5da", 1f); // PNV-10T Night Vision Goggles, AA Battery
 					_headWearDrainMultiplier.Add("5c0558060db834001b735271", 2f); // GPNVG-18 Night Vision goggles, CR123 battery pack
@@ -55,13 +54,10 @@ namespace BatterySystem
 			{
 				_mainCooldown = Time.time + 1f;
 
-				//Singleton<CommonUI>.Instance.EditBuildScreen.gameObject.GetComponentInChildren<ModdingScreenSlotView>(); // UI way
 				// || Singleton<GameWorld>.Instance.MainPlayer is HideoutPlayer
 				if (Singleton<GameWorld>.Instance?.MainPlayer?.HealthController.IsAlive != true) return;
 				BatterySystem.CheckHeadWearIfDraining();
 				BatterySystem.CheckSightIfDraining();
-				BatterySystem.CheckEarPieceIfDraining();
-				BatterySystem.Logger.LogInfo("Draining batteries at " + Time.time);
 				DrainBatteries();
 			}
 		}
@@ -72,24 +68,22 @@ namespace BatterySystem
 			{
 				if (batteryDictionary[item]) // == true
 				{
-					BatterySystem.Logger.LogInfo("Check drain item: " + item);
 					if (BatterySystem.headWearBattery != null && item.IsChildOf(BatterySystem.headWearItem) //for headwear nvg/t-7
 						&& BatterySystem.headWearItem.GetItemComponentsInChildren<TogglableComponent>().FirstOrDefault()?.On == true)
 					{
 						//Default battery lasts 1 hr * configmulti * itemmulti, itemmulti was Hazelify's idea!
-						BatterySystem.Logger.LogInfo("Draining item resource: " + item.GetItemComponentsInChildren<ResourceComponent>(false).First().Item);
-						BatterySystem.headWearBattery.Value -= 1 / 36f
+						BatterySystem.headWearBattery.Value -= Mathf.Clamp(1 / 36f
 								* BatterySystemConfig.DrainMultiplier.Value
-								* _headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId];
+								* _headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId], 0f, 100f);
 					}
 					else if (item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault() != null) //for sights + earpiece
 					{
-						BatterySystem.Logger.LogInfo("Draining item resource: " + item.GetItemComponentsInChildren<ResourceComponent>(false).First().Item);
-						item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value -= 1 / 100f
-							* BatterySystemConfig.DrainMultiplier.Value; //2 hr
-						if(item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value < 0)
+						item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value -= Mathf.Clamp(1 / 100f
+							* BatterySystemConfig.DrainMultiplier.Value, 0f, 100f); //2 hr
+
+						if (item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value == 0 && item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).ContainedItem))
 						{
-							item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value = 0;
+							BatterySystem.CheckEarPieceIfDraining();
 						}
 					}
 				}

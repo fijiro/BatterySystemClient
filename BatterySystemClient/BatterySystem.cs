@@ -200,7 +200,8 @@ namespace BatterySystem
 					Logger.LogInfo("Sight Found: " + sightInstance.SightMod.Item);
 				// if sight is already in dictionary, dont add it
 				if (!sightMods.Keys.Any(key => key.SightMod.Item == sightInstance.SightMod.Item)
-					&& (sightInstance.gameObject.GetComponentsInChildren<CollimatorSight>(true).FirstOrDefault() != null
+					&& (sightInstance.SightMod.Item.Template.Parent._id == "55818acf4bdc2dde698b456b" //compact collimator
+					|| sightInstance.SightMod.Item.Template.Parent._id == "55818ad54bdc2ddc698b4569" //collimator
 					|| sightInstance.SightMod.Item.Template.Parent._id == "55818aeb4bdc2ddc698b456a")) //Special Scope
 				{
 					sightMods.Add(sightInstance, sightInstance.SightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault());
@@ -281,6 +282,7 @@ namespace BatterySystem
 				BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
 												 //Singleton<Player>.Instance.OnSightChangedEvent -= sight => BatterySystem.CheckSightIfDraining();
 												 //Singleton<Player>.Instance.OnSightChangedEvent += sight => BatterySystem.CheckSightIfDraining();
+				BatterySystem.SetEarPieceComponents();
 			}
 			else //Spawned bots have their bal-, uh, batteries, drained
 			{
@@ -355,7 +357,7 @@ namespace BatterySystem
 		[PatchPostfix]
 		public static void PatchPostfix() //BetterAudio __instance
 		{
-			if (Singleton<GameWorld>.Instance != null)
+			if (Singleton<GameWorld>.Instance?.MainPlayer != null)
 			{
 				if (BatterySystemConfig.EnableLogs.Value)
 					Logger.LogInfo("UpdatePhonesPatch at " + Time.time);

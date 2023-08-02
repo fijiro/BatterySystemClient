@@ -57,9 +57,11 @@ namespace BatterySystem
 
 				//Singleton<CommonUI>.Instance.EditBuildScreen.gameObject.GetComponentInChildren<ModdingScreenSlotView>(); // UI way
 				// || Singleton<GameWorld>.Instance.MainPlayer is HideoutPlayer
-				if (Singleton<GameWorld>.Instance != null) return;
+				if (Singleton<GameWorld>.Instance?.MainPlayer?.HealthController.IsAlive != true) return;
 				BatterySystem.CheckHeadWearIfDraining();
 				BatterySystem.CheckSightIfDraining();
+				BatterySystem.CheckEarPieceIfDraining();
+				BatterySystem.Logger.LogInfo("Draining batteries at " + Time.time);
 				DrainBatteries();
 			}
 		}
@@ -71,10 +73,11 @@ namespace BatterySystem
 				if (batteryDictionary[item]) // == true
 				{
 					BatterySystem.Logger.LogInfo("Check drain item: " + item);
-					//Default battery lasts 1 hr * configmulti * itemmulti, itemmulti was Hazelify's idea!
 					if (BatterySystem.headWearBattery != null && item.IsChildOf(BatterySystem.headWearItem) //for headwear nvg/t-7
 						&& BatterySystem.headWearItem.GetItemComponentsInChildren<TogglableComponent>().FirstOrDefault()?.On == true)
 					{
+						//Default battery lasts 1 hr * configmulti * itemmulti, itemmulti was Hazelify's idea!
+						BatterySystem.Logger.LogInfo("Draining item resource: " + item.GetItemComponentsInChildren<ResourceComponent>(false).First().Item);
 						BatterySystem.headWearBattery.Value -= 1 / 36f
 								* BatterySystemConfig.DrainMultiplier.Value
 								* _headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId];
@@ -87,7 +90,6 @@ namespace BatterySystem
 						if(item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value < 0)
 						{
 							item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value = 0;
-							BatterySystem.CheckEarPieceIfDraining();
 						}
 					}
 				}

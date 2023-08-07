@@ -51,26 +51,32 @@ namespace BatterySystem
 			else return false;
 		}
 
-		public static void GenerateBatteryDictionary()
+		public static void UpdateBatteryDictionary()
 		{
-			BatterySystemPlugin.batteryDictionary.Clear();
-
-			if (_earPieceItem != null) // earpiece
-				BatterySystemPlugin.batteryDictionary.Add(_earPieceItem, _drainingEarPieceBattery);
-
-			if (GetheadWearSight() != null) // headwear
-				BatterySystemPlugin.batteryDictionary.Add(GetheadWearSight(), false);
-
-			foreach (SightModVisualControllers sightController in sightMods.Keys) // sights on active weapon
+			// Remove unequipped items
+			for (int i = BatterySystemPlugin.batteryDictionary.Count - 1; i >= 0; i--)
 			{
-				if (IsInSlot(sightController.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot)
-					&& !BatterySystemPlugin.batteryDictionary.ContainsKey(sightController.SightMod.Item))
-					BatterySystemPlugin.batteryDictionary.Add(sightController.SightMod.Item, false);
+				Item key = BatterySystemPlugin.batteryDictionary.Keys.ElementAt(i);
+				if (!(IsInSlot(key, PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece))
+					|| IsInSlot(key, PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Headwear))
+					|| IsInSlot(key, Singleton<GameWorld>.Instance.MainPlayer.ActiveSlot)))
+					BatterySystemPlugin.batteryDictionary.Remove(key);
 			}
 
+			if (_earPieceItem != null && !BatterySystemPlugin.batteryDictionary.ContainsKey(_earPieceItem)) // earpiece
+				BatterySystemPlugin.batteryDictionary.Add(_earPieceItem, _drainingEarPieceBattery);
+
+			if (GetheadWearSight() != null && !BatterySystemPlugin.batteryDictionary.ContainsKey(GetheadWearSight())) // headwear
+				BatterySystemPlugin.batteryDictionary.Add(GetheadWearSight(), _drainingHeadWearBattery);
+
+			foreach (SightModVisualControllers sightController in sightMods.Keys) // sights on active weapon
+				if (IsInSlot(sightController.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot)
+					&& !BatterySystemPlugin.batteryDictionary.ContainsKey(sightController.SightMod.Item))
+					BatterySystemPlugin.batteryDictionary.Add(sightController.SightMod.Item, sightMods[sightController]?.Value > 0);
+			
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
-				Logger.LogInfo("--- BATTERYSYSTEM: Generated battery dictionary: ---");
+				Logger.LogInfo("--- BATTERYSYSTEM: Updated battery dictionary: ---");
 				foreach (Item i in BatterySystemPlugin.batteryDictionary.Keys)
 					Logger.LogInfo(i);
 				Logger.LogInfo("---------------------------------------------");
@@ -90,7 +96,7 @@ namespace BatterySystem
 				Logger.LogInfo("Battery Resource: " + _earPieceBattery);
 			}
 			CheckEarPieceIfDraining();
-			GenerateBatteryDictionary();
+			UpdateBatteryDictionary();
 		}
 
 		public static void CheckEarPieceIfDraining()
@@ -114,9 +120,10 @@ namespace BatterySystem
 			//no headset equipped
 			else
 			{
-				Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", compressorMakeup);
-				Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", compressor);
-				Singleton<BetterAudio>.Instance.Master.SetFloat("MainVolume", 0f);
+				//might be unnecessary?
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", compressorMakeup);
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", compressor);
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("MainVolume", 0f);
 				_drainingEarPieceBattery = false;
 			}
 			if (_earPieceItem != null && BatterySystemPlugin.batteryDictionary.ContainsKey(_earPieceItem))
@@ -148,8 +155,8 @@ namespace BatterySystem
 				Logger.LogInfo("Battery in HeadWear: " + headWearBattery?.Item);
 				Logger.LogInfo("Battery Resource: " + headWearBattery);
 			}
-			GenerateBatteryDictionary();
 			CheckHeadWearIfDraining();
+			UpdateBatteryDictionary();
 		}
 
 		public static void CheckHeadWearIfDraining()
@@ -207,8 +214,8 @@ namespace BatterySystem
 					sightMods.Add(sightInstance, sightInstance.SightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault());
 				}
 			}
-			GenerateBatteryDictionary();
 			CheckSightIfDraining();
+			UpdateBatteryDictionary();
 		}
 		public static void CheckSightIfDraining()
 		{

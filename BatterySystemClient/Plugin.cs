@@ -54,8 +54,8 @@ namespace BatterySystem
 			{
 				_mainCooldown = Time.time + 1f;
 
-				// || Singleton<GameWorld>.Instance.MainPlayer is HideoutPlayer
-				if (Singleton<GameWorld>.Instance?.MainPlayer?.HealthController.IsAlive != true) return;
+				if (Singleton<GameWorld>.Instance?.MainPlayer?.HealthController.IsAlive != true 
+					|| Singleton<GameWorld>.Instance.MainPlayer is HideoutPlayer) return;
 				BatterySystem.CheckHeadWearIfDraining();
 				BatterySystem.CheckSightIfDraining();
 				DrainBatteries();

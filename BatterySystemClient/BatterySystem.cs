@@ -73,7 +73,7 @@ namespace BatterySystem
 				if (IsInSlot(sightController.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot)
 					&& !BatterySystemPlugin.batteryDictionary.ContainsKey(sightController.SightMod.Item))
 					BatterySystemPlugin.batteryDictionary.Add(sightController.SightMod.Item, sightMods[sightController]?.Value > 0);
-			
+
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
 				Logger.LogInfo("--- BATTERYSYSTEM: Updated battery dictionary: ---");
@@ -302,13 +302,18 @@ namespace BatterySystem
 			_botInventory = (InventoryControllerClass)_inventoryField.GetValue(botPlayer);
 			foreach (Item item in _botInventory.EquipmentItems)
 			{
-				//if item is in holster or firstprimaryweapon slot then>>
+				//battery level is exponential to players level
 				for (int i = 0; i < item.GetItemComponentsInChildren<ResourceComponent>().Count(); i++)
 				{
 					ResourceComponent resource = item.GetItemComponentsInChildren<ResourceComponent>().ElementAt(i);
 					if (resource.MaxResource > 0)
-						resource.Value = _random.Next(BatterySystemConfig.SpawnDurabilityMin.Value, BatterySystemConfig.SpawnDurabilityMax.Value);
+					{
+						int resourceAvg = _random.Next(0, 5);
+						if (botPlayer.Side != EPlayerSide.Savage)
+							resourceAvg = (int)(1 / 25f * Mathf.Sqrt(botPlayer.Profile.Info.Level));
 
+						resource.Value = Mathf.Clamp(_random.Next(resourceAvg - 10, resourceAvg + 5), 0, 100);
+					}
 					if (BatterySystemConfig.EnableLogs.Value)
 					{
 						Logger.LogInfo("DrainSpawnedBattery on Bot: " + botPlayer + " at " + Time.time);

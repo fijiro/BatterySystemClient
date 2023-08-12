@@ -78,14 +78,18 @@ namespace BatterySystem
 					}
 					else if (item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault() != null) //for sights + earpiece
 					{
-						BatterySystem.Logger.LogInfo("Draining item: " + item + 
-							item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault());
-						item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value -= Mathf.Clamp(1 / 100f
-							* BatterySystemConfig.DrainMultiplier.Value, 0f, 100f); //2 hr
+						//BatterySystem.Logger.LogInfo("Draining item: " + item + item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault());
+						item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value -= 1 / 100f
+							* BatterySystemConfig.DrainMultiplier.Value; //2 hr
 
-						if (item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value == 0f && item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).ContainedItem))
+						if (item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value < 0f)
 						{
-							BatterySystem.CheckEarPieceIfDraining();
+							item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value = 0f;
+							if (item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).ContainedItem))
+							{
+								item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value = 0f;
+								BatterySystem.CheckEarPieceIfDraining();
+							}
 						}
 					}
 				}

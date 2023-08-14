@@ -32,10 +32,12 @@ namespace BatterySystem
 			if (BatterySystemConfig.EnableMod.Value)
 			{
 				new PlayerInitPatch().Enable();
+				new OpticSightPatch().Enable();
 				new GetBoneForSlotPatch().Enable();
 				new UpdatePhonesPatch().Enable();
 				new ApplyItemPatch().Enable();
 				new SightDevicePatch().Enable();
+				new TacticalDevicePatch().Enable();
 				new NvgHeadWearPatch().Enable();
 				new ThermalHeadWearPatch().Enable();
 				{
@@ -54,12 +56,19 @@ namespace BatterySystem
 			{
 				_mainCooldown = Time.time + 1f;
 
-				if (Singleton<GameWorld>.Instance?.MainPlayer?.HealthController.IsAlive != true 
-					|| Singleton<GameWorld>.Instance.MainPlayer is HideoutPlayer) return;
-				BatterySystem.CheckHeadWearIfDraining();
-				BatterySystem.CheckSightIfDraining();
+				if (!InGame()) return;
+				//BatterySystem.CheckHeadWearIfDraining();
+				//BatterySystem.CheckSightIfDraining();
 				DrainBatteries();
 			}
+		}
+
+		public static bool InGame()
+		{
+			if (Singleton<GameWorld>.Instance?.MainPlayer?.HealthController.IsAlive == true
+					&& !(Singleton<GameWorld>.Instance.MainPlayer is HideoutPlayer))
+				return true;
+			else return false;
 		}
 
 		private static void DrainBatteries()

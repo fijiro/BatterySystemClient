@@ -56,10 +56,7 @@ namespace BatterySystem
 			{
 				_mainCooldown = Time.time + 1f;
 
-				if (!InGame()) return;
-				//BatterySystem.CheckHeadWearIfDraining();
-				//BatterySystem.CheckSightIfDraining();
-				DrainBatteries();
+				if (InGame()) DrainBatteries();
 			}
 		}
 
@@ -91,13 +88,16 @@ namespace BatterySystem
 						item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value -= 1 / 100f
 							* BatterySystemConfig.DrainMultiplier.Value; //2 hr
 
+						//when battery has no charge left
 						if (item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value < 0f)
 						{
 							item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value = 0f;
 							if (item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).ContainedItem))
-							{
-								item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value = 0f;
 								BatterySystem.CheckEarPieceIfDraining();
+							else if (item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).ContainedItem))
+							{
+								BatterySystem.CheckDeviceIfDraining();
+								BatterySystem.CheckSightIfDraining();
 							}
 						}
 					}

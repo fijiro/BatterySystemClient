@@ -14,13 +14,14 @@ using System.Collections.Generic;
 using EFT.CameraControl;
 using EFT.Animations;
 using System.Collections;
+using System;
+using System.Runtime.CompilerServices;
 
 namespace BatterySystem
 {
 	public class BatterySystem
 	{
 		public static ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("BatterySystem");
-
 		public static Item headWearItem = null;
 		private static NightVisionComponent _headWearNvg = null;
 		private static ThermalVisionComponent _headWearThermal = null;
@@ -115,9 +116,9 @@ namespace BatterySystem
 			{
 				MethodInvoker.GetHandler(AccessTools.Method(typeof(Player), "UpdatePhonesReally"));
 				//GetMethod("UpdatePhones", BindingFlags.NonPublic | BindingFlags.Instance)
-				Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", compressorMakeup);
-				Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", compressor);
-				Singleton<BetterAudio>.Instance.Master.SetFloat("MainVolume", 0f);
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", compressorMakeup);
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", compressor);
+				//Singleton<BetterAudio>.Instance.Master.SetFloat("MainVolume", 0f);
 				_drainingEarPieceBattery = true;
 			}
 			//headset has no battery
@@ -131,6 +132,7 @@ namespace BatterySystem
 			//no headset equipped
 			else
 			{
+				MethodInvoker.GetHandler(AccessTools.Method(typeof(Player), "UpdatePhonesReally"));
 				//might be unnecessary?
 				//Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", compressorMakeup);
 				//Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", compressor);
@@ -387,21 +389,23 @@ namespace BatterySystem
 			_botInventory = (InventoryControllerClass)_inventoryField.GetValue(botPlayer);
 			foreach (Item item in _botInventory.EquipmentItems)
 			{
-				//battery level is exponential to players level
+				//batteries charge depends on their max charge and bot level
 				for (int i = 0; i < item.GetItemComponentsInChildren<ResourceComponent>().Count(); i++)
 				{
+					int resourceAvg = _random.Next(0, 5);
 					ResourceComponent resource = item.GetItemComponentsInChildren<ResourceComponent>().ElementAt(i);
 					if (resource.MaxResource > 0)
 					{
-						float resourceAvg = _random.Next(0, 5);
 						if (botPlayer.Side != EPlayerSide.Savage)
-							resourceAvg = (1f / 25f) * Mathf.Sqrt(botPlayer.Profile.Info.Level);
-
-						resource.Value = Mathf.Clamp(_random.Next((int)resourceAvg - 10, (int)resourceAvg + 5), 0, 100);
+						{
+							resourceAvg = (int) (botPlayer.Profile.Info.Level / 69f * resource.MaxResource);
+						}
+						resource.Value = _random.Next(Mathf.Max(resourceAvg - 10, 0), (int)Mathf.Min(resourceAvg + 5, resource.MaxResource));
 					}
 					if (BatterySystemConfig.EnableLogs.Value)
 					{
-						Logger.LogInfo("DrainSpawnedBattery on Bot: " + botPlayer + +botPlayer.Profile.Info.Level + " at " + Time.time);
+						Logger.LogInfo("DrainSpawnedBattery on Bot at " + Time.time);
+						Logger.LogInfo("LVL: " + botPlayer.Profile.Info.Level + " AVG: " + resourceAvg);
 						Logger.LogInfo("Checking item from slot: " + item);
 						Logger.LogInfo("Res value: " + resource.Value);
 					}
@@ -430,7 +434,6 @@ namespace BatterySystem
 			GInterface114 playerField = (GInterface114)playerInterfaceField.GetValue(__instance);
 			if (BatterySystemPlugin.InGame() && playerField?.Weapon != null && Singleton<GameWorld>.Instance.GetAlivePlayerByProfileID(playerField.Weapon.Owner.ID).IsYourPlayer)
 			{
-				Logger.LogInfo("AimSightPatch at " + Time.time + " for " + __instance);
 				BatterySystem.CheckSightIfDraining();
 			}
 		}
@@ -441,7 +444,7 @@ namespace BatterySystem
 		private static GClass707.GClass708 _gClass = new GClass707.GClass708();
 		protected override MethodBase GetTargetMethod()
 		{
-			return typeof(GClass707).GetMethod(nameof(GClass707.GetBoneForSlot));
+			return AccessTools.Method(typeof(GClass707), "GetBoneForSlot");
 		}
 
 		[PatchPrefix]
@@ -470,7 +473,7 @@ namespace BatterySystem
 	{
 		protected override MethodBase GetTargetMethod()
 		{
-			return typeof(Player).GetMethod("UpdatePhones", BindingFlags.NonPublic | BindingFlags.Instance);
+			return AccessTools.Method(typeof(Player), "UpdatePhones");
 		}
 		[PatchPostfix]
 		public static void PatchPostfix(ref Player __instance) //BetterAudio __instance
@@ -496,7 +499,7 @@ namespace BatterySystem
 		[PatchPostfix]
 		static void Postfix(ref Slot __instance) // limit to only player asap
 		{
-			if (BatterySystemPlugin.InGame() && __instance.ParentItem.ParentRecursiveCheck(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Headwear).ParentItem))
+			if (BatterySystemPlugin.InGame() && __instance.ContainedItem.ParentRecursiveCheck(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Headwear).ParentItem))
 			{
 				if (BatterySystemConfig.EnableLogs.Value)
 				{
@@ -522,6 +525,8 @@ namespace BatterySystem
 				{ // if sight is removed and empty slot is applied, then remove the sight from sightdb
 					if (BatterySystemConfig.EnableLogs.Value)
 						Logger.LogInfo("Slot is child of ActiveSlot!");
+					BatterySystem.CheckDeviceIfDraining();
+					BatterySystem.CheckSightIfDraining();
 					return;
 				}
 				BatterySystem.SetEarPieceComponents();
@@ -570,8 +575,6 @@ namespace BatterySystem
 
 	public class NvgHeadWearPatch : ModulePatch
 	{
-		private static MonoBehaviour mono = Singleton<MonoBehaviour>.Instance;
-		private static NightVision nightVision;
 		protected override MethodBase GetTargetMethod()
 		{
 			return typeof(NightVision).GetMethod(nameof(NightVision.StartSwitch));
@@ -582,11 +585,9 @@ namespace BatterySystem
 		{
 			if (__instance.name == "FPS Camera" && BatterySystemPlugin.InGame())
 			{
-				nightVision = __instance;
-				Logger.LogInfo("NVGPatch InProcessSwitching " + __instance.InProcessSwitching + Time.time);
 				if (__instance.InProcessSwitching)
-					mono.StartCoroutine(isSwitching(__instance));
-				else BatterySystem.CheckHeadWearIfDraining();
+					StaticManager.BeginCoroutine(isSwitching(__instance));
+				else BatterySystem.SetHeadWearComponents();
 			}
 		}
 		//waits until InProcessSwitching is false and then 
@@ -594,10 +595,9 @@ namespace BatterySystem
 		{
 			while (nv.InProcessSwitching)
 			{
-				yield return new WaitForSeconds(1f/60f);
+				yield return new WaitForSeconds(1f / 100f);
 			}
-			Logger.LogInfo("InProcessSwitching ended at " + Time.time);
-			BatterySystem.CheckHeadWearIfDraining();
+			BatterySystem.SetHeadWearComponents();
 			yield break;
 		}
 	}
@@ -614,8 +614,20 @@ namespace BatterySystem
 		{
 			if (__instance.name == "FPS Camera" && BatterySystemPlugin.InGame())
 			{
-				BatterySystem.SetHeadWearComponents();
+				if (__instance.InProcessSwitching)
+					StaticManager.BeginCoroutine(isSwitching(__instance));
+				else BatterySystem.SetHeadWearComponents();
 			}
 		}
+		private static IEnumerator isSwitching(ThermalVision tv)
+		{
+			while (tv.InProcessSwitching)
+			{
+				yield return new WaitForSeconds(1f / 100f);
+			}
+			BatterySystem.SetHeadWearComponents();
+			yield break;
+		}
 	}
+
 }

@@ -10,10 +10,9 @@ namespace BatterySystem.Configs
 		//public static ConfigEntry<int> SpawnDurabilityMin { get; private set; }
 		//public static ConfigEntry<int> SpawnDurabilityMax { get; private set; }
 
-		public static ConfigEntry<float> CompressorMixerVolume { get; private set; }
-		public static ConfigEntry<float> MainMixerVolume { get; private set; }
-		public static ConfigEntry<float> CompressorGain { get; private set; }
-		//Singleton<BetterAudio>.Instance.Master.GetFloat("CompressorHighFrequenciesGain", out temp);
+		//public static ConfigEntry<float> CompressorMixerVolume { get; private set; }
+		//public static ConfigEntry<float> MainMixerVolume { get; private set; }
+		//public static ConfigEntry<float> CompressorGain { get; private set; }
 
 		private static string generalSettings = "General Settings";
 

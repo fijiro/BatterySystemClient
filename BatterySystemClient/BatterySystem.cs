@@ -12,7 +12,6 @@ using System.Threading.Tasks;
 using BepInEx.Logging;
 using System.Collections.Generic;
 using EFT.CameraControl;
-using System.Reflection.Emit;
 using EFT.Animations;
 using System.Collections;
 
@@ -373,19 +372,11 @@ namespace BatterySystem
 				_inventoryController = (InventoryControllerClass)_inventoryField.GetValue(__instance); //Player Inventory
 				BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
 				BatterySystem.lightMods.Clear(); // same for tactical devices
-				/*__instance.OnSightChangedEvent -= sight =>
-				{
-					Logger.LogInfo("ONSIGHTCHANGEDEVENT! AT " + Time.time + " FOR " + sight);
-					BatterySystem.CheckSightIfDraining();
-				};
-				__instance.OnSightChangedEvent += sight =>
-				{
-					Logger.LogInfo("ONSIGHTCHANGEDEVENT! AT " + Time.time + " FOR " + sight);
-					BatterySystem.CheckSightIfDraining();
-				};*/
 				BatterySystem.SetEarPieceComponents();
+
+				//__instance.OnSightChangedEvent -= sight => BatterySystem.CheckSightIfDraining();
 			}
-			else //Spawned bots have their bal-, uh, batteries, drained
+			else //Spawned bots have their batteries drained
 			{
 				DrainSpawnedBattery(__instance);
 			}
@@ -423,24 +414,28 @@ namespace BatterySystem
 		}
 	}
 
-	//When adsing 
-	public class OpticSightPatch : ModulePatch
+	//When Aiming down, check sight
+	public class AimSightPatch : ModulePatch
 	{
+		private static FieldInfo playerInterfaceField;
 		protected override MethodBase GetTargetMethod()
 		{
+			playerInterfaceField = AccessTools.Field(typeof(ProceduralWeaponAnimation), "ginterface114_0");
 			return AccessTools.Method(typeof(ProceduralWeaponAnimation), "method_21");
 		}
 
-		[PatchPrefix]
-		public static void Prefix(ref ProceduralWeaponAnimation __instance)
+		[PatchPostfix]
+		public static void Postfix(ref ProceduralWeaponAnimation __instance)
 		{
-			if (BatterySystemPlugin.InGame() || true)
+			GInterface114 playerField = (GInterface114)playerInterfaceField.GetValue(__instance);
+			if (BatterySystemPlugin.InGame() && playerField?.Weapon != null && Singleton<GameWorld>.Instance.GetAlivePlayerByProfileID(playerField.Weapon.Owner.ID).IsYourPlayer)
 			{
-				Logger.LogInfo("/////////////////// OpticSightPatch at " + Time.time + " for " + __instance);
+				Logger.LogInfo("AimSightPatch at " + Time.time + " for " + __instance);
+				BatterySystem.CheckSightIfDraining();
 			}
 		}
 	}
-	//GClass707.GetBoneForSlot(EFT.InventoryLogic.IContainer container) throws the error
+	//Throws nullreferror.
 	public class GetBoneForSlotPatch : ModulePatch
 	{
 		private static GClass707.GClass708 _gClass = new GClass707.GClass708();
@@ -501,7 +496,7 @@ namespace BatterySystem
 		[PatchPostfix]
 		static void Postfix(ref Slot __instance) // limit to only player asap
 		{
-			if (BatterySystemPlugin.InGame())
+			if (BatterySystemPlugin.InGame() && __instance.ParentItem.ParentRecursiveCheck(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Headwear).ParentItem))
 			{
 				if (BatterySystemConfig.EnableLogs.Value)
 				{
@@ -564,10 +559,10 @@ namespace BatterySystem
 		static void Postfix(ref TacticalComboVisualController __instance)
 		{
 			//only sights on equipped weapon are added
-			Logger.LogWarning("TDEVICEPATCH AT " + Time.time + "&&&&&&&&&&&&&&");
 			if (BatterySystemPlugin.InGame()
 				&& BatterySystem.IsInSlot(__instance?.LightMod?.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot))
 			{
+				Logger.LogWarning("TDEVICEPATCH AT " + Time.time + "&&&&&&&&&&&&&&");
 				BatterySystem.SetDeviceComponents(__instance);
 			}
 		}
@@ -601,6 +596,7 @@ namespace BatterySystem
 			{
 				yield return true;
 			}
+			Logger.LogInfo("InProcessSwitching ended at " + Time.time);
 			BatterySystem.CheckHeadWearIfDraining();
 			yield break;
 		}

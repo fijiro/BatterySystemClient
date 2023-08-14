@@ -32,7 +32,7 @@ namespace BatterySystem
 			if (BatterySystemConfig.EnableMod.Value)
 			{
 				new PlayerInitPatch().Enable();
-				new OpticSightPatch().Enable();
+				new AimSightPatch().Enable();
 				new GetBoneForSlotPatch().Enable();
 				new UpdatePhonesPatch().Enable();
 				new ApplyItemPatch().Enable();

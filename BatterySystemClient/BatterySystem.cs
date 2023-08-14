@@ -473,9 +473,9 @@ namespace BatterySystem
 			return typeof(Player).GetMethod("UpdatePhones", BindingFlags.NonPublic | BindingFlags.Instance);
 		}
 		[PatchPostfix]
-		public static void PatchPostfix() //BetterAudio __instance
+		public static void PatchPostfix(ref Player __instance) //BetterAudio __instance
 		{
-			if (BatterySystemPlugin.InGame())
+			if (BatterySystemPlugin.InGame() && __instance.IsYourPlayer)
 			{
 				if (BatterySystemConfig.EnableLogs.Value)
 					Logger.LogInfo("UpdatePhonesPatch at " + Time.time);
@@ -594,7 +594,7 @@ namespace BatterySystem
 		{
 			while (nv.InProcessSwitching)
 			{
-				yield return true;
+				yield return new WaitForSeconds(1f/60f);
 			}
 			Logger.LogInfo("InProcessSwitching ended at " + Time.time);
 			BatterySystem.CheckHeadWearIfDraining();

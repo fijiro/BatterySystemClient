@@ -260,8 +260,7 @@ namespace BatterySystem
 					}
 					foreach (OpticSight optic in key.gameObject.GetComponentsInChildren<OpticSight>(true))
 					{
-						if (key.gameObject.GetComponentsInChildren<CollimatorSight>(true) == null) // Support for HHS-1
-							optic.enabled = _drainingSightBattery;
+						optic.enabled = _drainingSightBattery;
 					}
 					foreach (NightVisionComponent nv in key.gameObject.GetComponentsInChildren<NightVisionComponent>(true))
 					{
@@ -399,7 +398,7 @@ namespace BatterySystem
 					{
 						if (botPlayer.Side != EPlayerSide.Savage)
 						{
-							resourceAvg = (int)(Mathf.Pow((botPlayer.Profile.Info.Level / 69f), 1.5f) * resource.MaxResource);
+							resourceAvg = (int)(botPlayer.Profile.Info.Level / 150f * resource.MaxResource);
 						}
 						resource.Value = _random.Next(Mathf.Max(resourceAvg - 10, 0), (int)Mathf.Min(resourceAvg + 5, resource.MaxResource));
 					}
@@ -552,7 +551,7 @@ namespace BatterySystem
 				BatterySystem.SetSightComponents(__instance);
 			}
 		}
-	}
+	}/*
 	public class FoldableSightPatch : ModulePatch
 	{
 		protected override MethodBase GetTargetMethod()
@@ -567,7 +566,7 @@ namespace BatterySystem
 					Logger.LogInfo("FindAimTransforms at " + Time.time);
 			//AutofoldableSight.On == On when folds, unfold false
 		}
-	}
+	}*/
 
 	public class TacticalDevicePatch : ModulePatch
 	{

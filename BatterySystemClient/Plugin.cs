@@ -37,7 +37,7 @@ namespace BatterySystem
 				new UpdatePhonesPatch().Enable();
 				new ApplyItemPatch().Enable();
 				new SightDevicePatch().Enable();
-				new FoldableSightPatch().Enable();
+				//new FoldableSightPatch().Enable();
 				new TacticalDevicePatch().Enable();
 				new NvgHeadWearPatch().Enable();
 				new ThermalHeadWearPatch().Enable();

@@ -18,7 +18,7 @@ namespace BatterySystem
 	 * Sound when toggling battery runs out or is removed or added
 	 * battery recharger - idea by Props
 	 */
-	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.3.0")]
+	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.4.0")]
 	[BepInDependency("com.spt-aki.core", "3.6.0")]
 	public class BatterySystemPlugin : BaseUnityPlugin
 	{
@@ -37,6 +37,7 @@ namespace BatterySystem
 				new UpdatePhonesPatch().Enable();
 				new ApplyItemPatch().Enable();
 				new SightDevicePatch().Enable();
+				new FoldableSightPatch().Enable();
 				new TacticalDevicePatch().Enable();
 				new NvgHeadWearPatch().Enable();
 				new ThermalHeadWearPatch().Enable();
@@ -82,7 +83,7 @@ namespace BatterySystem
 								* BatterySystemConfig.DrainMultiplier.Value
 								* _headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId], 0f, 100f);
 					}
-					else if (item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault() != null) //for sights + earpiece
+					else if (item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault() != null) //for sights, earpiece and tactical devices
 					{
 						//BatterySystem.Logger.LogInfo("Draining item: " + item + item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault());
 						item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value -= 1 / 100f
@@ -94,7 +95,9 @@ namespace BatterySystem
 							item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value = 0f;
 							if (item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).ContainedItem))
 								BatterySystem.CheckEarPieceIfDraining();
-							else if (item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).ContainedItem))
+							else if (item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Headwear).ContainedItem))
+								BatterySystem.CheckHeadWearIfDraining();
+							else if (item.IsChildOf(Singleton<GameWorld>.Instance.MainPlayer?.ActiveSlot.ContainedItem))
 							{
 								BatterySystem.CheckDeviceIfDraining();
 								BatterySystem.CheckSightIfDraining();

@@ -260,7 +260,8 @@ namespace BatterySystem
 					}
 					foreach (OpticSight optic in key.gameObject.GetComponentsInChildren<OpticSight>(true))
 					{
-						optic.enabled = _drainingSightBattery;
+						if (key.gameObject.GetComponentsInChildren<CollimatorSight>(true) == null) // Support for HHS-1
+							optic.enabled = _drainingSightBattery;
 					}
 					foreach (NightVisionComponent nv in key.gameObject.GetComponentsInChildren<NightVisionComponent>(true))
 					{
@@ -398,7 +399,7 @@ namespace BatterySystem
 					{
 						if (botPlayer.Side != EPlayerSide.Savage)
 						{
-							resourceAvg = (int) (botPlayer.Profile.Info.Level / 69f * resource.MaxResource);
+							resourceAvg = (int)(Mathf.Pow((botPlayer.Profile.Info.Level / 69f), 1.5f) * resource.MaxResource);
 						}
 						resource.Value = _random.Next(Mathf.Max(resourceAvg - 10, 0), (int)Mathf.Min(resourceAvg + 5, resource.MaxResource));
 					}
@@ -552,6 +553,21 @@ namespace BatterySystem
 			}
 		}
 	}
+	public class FoldableSightPatch : ModulePatch
+	{
+		protected override MethodBase GetTargetMethod()
+		{
+			return typeof(ProceduralWeaponAnimation).GetMethod("FindAimTransforms");
+		}
+		[PatchPostfix]
+		static void Postfix(ref ProceduralWeaponAnimation __instance)
+		{
+			if (BatterySystemConfig.AutoUnfold.Value)
+				if (BatterySystemConfig.EnableLogs.Value)
+					Logger.LogInfo("FindAimTransforms at " + Time.time);
+			//AutofoldableSight.On == On when folds, unfold false
+		}
+	}
 
 	public class TacticalDevicePatch : ModulePatch
 	{
@@ -567,7 +583,6 @@ namespace BatterySystem
 			if (BatterySystemPlugin.InGame()
 				&& BatterySystem.IsInSlot(__instance?.LightMod?.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot))
 			{
-				Logger.LogWarning("TDEVICEPATCH AT " + Time.time + "&&&&&&&&&&&&&&");
 				BatterySystem.SetDeviceComponents(__instance);
 			}
 		}

@@ -14,8 +14,6 @@ using System.Collections.Generic;
 using EFT.CameraControl;
 using EFT.Animations;
 using System.Collections;
-using System;
-using System.Runtime.CompilerServices;
 
 namespace BatterySystem
 {
@@ -375,7 +373,6 @@ namespace BatterySystem
 				BatterySystem.sightMods.Clear(); // remove old sight entries that were saved from previous raid
 				BatterySystem.lightMods.Clear(); // same for tactical devices
 				BatterySystem.SetEarPieceComponents();
-
 				//__instance.OnSightChangedEvent -= sight => BatterySystem.CheckSightIfDraining();
 			}
 			else //Spawned bots have their batteries drained
@@ -413,6 +410,7 @@ namespace BatterySystem
 			}
 		}
 		public static Slot GetEquipmentSlot(EquipmentSlot slot)
+
 		{
 			return _inventoryController.Inventory.Equipment.GetSlot(slot);
 		}
@@ -431,6 +429,7 @@ namespace BatterySystem
 		[PatchPostfix]
 		public static void Postfix(ref ProceduralWeaponAnimation __instance)
 		{
+
 			GInterface114 playerField = (GInterface114)playerInterfaceField.GetValue(__instance);
 			if (BatterySystemPlugin.InGame() && playerField?.Weapon != null && Singleton<GameWorld>.Instance.GetAlivePlayerByProfileID(playerField.Weapon.Owner.ID).IsYourPlayer)
 			{

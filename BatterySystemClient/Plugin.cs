@@ -82,6 +82,13 @@ namespace BatterySystem
 						BatterySystem.headWearBattery.Value -= Mathf.Clamp(1 / 36f
 								* BatterySystemConfig.DrainMultiplier.Value
 								* _headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId], 0f, 100f);
+						if (item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value < 0f)
+						{
+							item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value = 0f;
+							if (item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Headwear).ContainedItem))
+								BatterySystem.CheckHeadWearIfDraining();
+
+						}
 					}
 					else if (item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault() != null) //for sights, earpiece and tactical devices
 					{
@@ -95,8 +102,6 @@ namespace BatterySystem
 							item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value = 0f;
 							if (item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).ContainedItem))
 								BatterySystem.CheckEarPieceIfDraining();
-							else if (item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Headwear).ContainedItem))
-								BatterySystem.CheckHeadWearIfDraining();
 							else if (item.IsChildOf(Singleton<GameWorld>.Instance.MainPlayer?.ActiveSlot.ContainedItem))
 							{
 								BatterySystem.CheckDeviceIfDraining();

@@ -18,7 +18,7 @@ namespace BatterySystem
 	 * Sound when toggling battery runs out or is removed or added
 	 * battery recharger - idea by Props
 	 */
-	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.3.0")]
+	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.4.0")]
 	[BepInDependency("com.spt-aki.core", "3.6.0")]
 	public class BatterySystemPlugin : BaseUnityPlugin
 	{
@@ -32,10 +32,13 @@ namespace BatterySystem
 			if (BatterySystemConfig.EnableMod.Value)
 			{
 				new PlayerInitPatch().Enable();
+				new AimSightPatch().Enable();
 				new GetBoneForSlotPatch().Enable();
 				new UpdatePhonesPatch().Enable();
 				new ApplyItemPatch().Enable();
 				new SightDevicePatch().Enable();
+				//new FoldableSightPatch().Enable();
+				new TacticalDevicePatch().Enable();
 				new NvgHeadWearPatch().Enable();
 				new ThermalHeadWearPatch().Enable();
 				{
@@ -54,12 +57,16 @@ namespace BatterySystem
 			{
 				_mainCooldown = Time.time + 1f;
 
-				// || Singleton<GameWorld>.Instance.MainPlayer is HideoutPlayer
-				if (Singleton<GameWorld>.Instance?.MainPlayer?.HealthController.IsAlive != true) return;
-				BatterySystem.CheckHeadWearIfDraining();
-				BatterySystem.CheckSightIfDraining();
-				DrainBatteries();
+				if (InGame()) DrainBatteries();
 			}
+		}
+
+		public static bool InGame()
+		{
+			if (Singleton<GameWorld>.Instance?.MainPlayer?.HealthController.IsAlive == true
+					&& !(Singleton<GameWorld>.Instance.MainPlayer is HideoutPlayer))
+				return true;
+			else return false;
 		}
 
 		private static void DrainBatteries()
@@ -75,17 +82,31 @@ namespace BatterySystem
 						BatterySystem.headWearBattery.Value -= Mathf.Clamp(1 / 36f
 								* BatterySystemConfig.DrainMultiplier.Value
 								* _headWearDrainMultiplier[BatterySystem.GetheadWearSight()?.TemplateId], 0f, 100f);
-					}
-					else if (item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault() != null) //for sights + earpiece
-					{
-						BatterySystem.Logger.LogInfo("Draining item: " + item + 
-							item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault());
-						item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value -= Mathf.Clamp(1 / 100f
-							* BatterySystemConfig.DrainMultiplier.Value, 0f, 100f); //2 hr
-
-						if (item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value == 0f && item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).ContainedItem))
+						if (item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value < 0f)
 						{
-							BatterySystem.CheckEarPieceIfDraining();
+							item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value = 0f;
+							if (item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Headwear).ContainedItem))
+								BatterySystem.CheckHeadWearIfDraining();
+
+						}
+					}
+					else if (item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault() != null) //for sights, earpiece and tactical devices
+					{
+						//BatterySystem.Logger.LogInfo("Draining item: " + item + item.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault());
+						item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value -= 1 / 100f
+							* BatterySystemConfig.DrainMultiplier.Value; //2 hr
+
+						//when battery has no charge left
+						if (item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value < 0f)
+						{
+							item.GetItemComponentsInChildren<ResourceComponent>(false).First().Value = 0f;
+							if (item.IsChildOf(PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).ContainedItem))
+								BatterySystem.CheckEarPieceIfDraining();
+							else if (item.IsChildOf(Singleton<GameWorld>.Instance.MainPlayer?.ActiveSlot.ContainedItem))
+							{
+								BatterySystem.CheckDeviceIfDraining();
+								BatterySystem.CheckSightIfDraining();
+							}
 						}
 					}
 				}

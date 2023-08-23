@@ -27,7 +27,7 @@ namespace BatterySystem.Configs
 					new ConfigurationManagerAttributes { IsAdvanced = false, Order = 100 }));
 
 				EnableHeadsets = Config.Bind(generalSettings, "Enable Headsets", true,
-					new ConfigDescription("Enable BatterySystem for headsets. Disable this for compatibility with mods that alter headsets such as Realism. Requires restart.",
+					new ConfigDescription("Enable BatterySystem for headsets. Disable this if your headsets behave weirdly with other mods such as Realism. Requires restart.",
 					null,
 					new ConfigurationManagerAttributes { IsAdvanced = false, Order = 75 }));
 

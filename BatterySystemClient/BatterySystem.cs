@@ -65,7 +65,8 @@ namespace BatterySystem
 					BatterySystemPlugin.batteryDictionary.Remove(key);
 			}
 
-			if (_earPieceItem != null && !BatterySystemPlugin.batteryDictionary.ContainsKey(_earPieceItem)) // earpiece
+			if (BatterySystemConfig.EnableHeadsets.Value && _earPieceItem != null 
+				&& !BatterySystemPlugin.batteryDictionary.ContainsKey(_earPieceItem)) // earpiece
 				BatterySystemPlugin.batteryDictionary.Add(_earPieceItem, _drainingEarPieceBattery);
 
 			if (GetheadWearSight() != null && !BatterySystemPlugin.batteryDictionary.ContainsKey(GetheadWearSight())) // headwear
@@ -93,59 +94,57 @@ namespace BatterySystem
 
 		public static void SetEarPieceComponents()
 		{
-			_earPieceItem = PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).Items?.FirstOrDefault();
-			_earPieceBattery = _earPieceItem?.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault();
-			_drainingEarPieceBattery = false;
-			if (BatterySystemConfig.EnableLogs.Value)
+			if (BatterySystemConfig.EnableHeadsets.Value)
 			{
-				Logger.LogInfo("--- BATTERYSYSTEM: Setting EarPiece components at: " + Time.time + " ---");
-				Logger.LogInfo("headWearItem: " + _earPieceItem);
-				Logger.LogInfo("Battery in Earpiece: " + _earPieceBattery?.Item);
-				Logger.LogInfo("Battery Resource: " + _earPieceBattery);
+				_earPieceItem = PlayerInitPatch.GetEquipmentSlot(EquipmentSlot.Earpiece).Items?.FirstOrDefault();
+				_earPieceBattery = _earPieceItem?.GetItemComponentsInChildren<ResourceComponent>(false).FirstOrDefault();
+				_drainingEarPieceBattery = false;
+				if (BatterySystemConfig.EnableLogs.Value)
+				{
+					Logger.LogInfo("--- BATTERYSYSTEM: Setting EarPiece components at: " + Time.time + " ---");
+					Logger.LogInfo("headWearItem: " + _earPieceItem);
+					Logger.LogInfo("Battery in Earpiece: " + _earPieceBattery?.Item);
+					Logger.LogInfo("Battery Resource: " + _earPieceBattery);
+				}
+				CheckEarPieceIfDraining();
+				UpdateBatteryDictionary();
 			}
-			CheckEarPieceIfDraining();
-			UpdateBatteryDictionary();
 		}
 
 		public static void CheckEarPieceIfDraining()
 		{
-			//headset has charged battery installed
-			if (_earPieceBattery != null && _earPieceBattery.Value > 0)
+			if (BatterySystemConfig.EnableHeadsets.Value)
 			{
-				MethodInvoker.GetHandler(AccessTools.Method(typeof(Player), "UpdatePhonesReally"));
-				//GetMethod("UpdatePhones", BindingFlags.NonPublic | BindingFlags.Instance)
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", compressorMakeup);
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", compressor);
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("MainVolume", 0f);
-				_drainingEarPieceBattery = true;
-			}
-			//headset has no battery
-			else if (_earPieceItem != null)
-			{
-				Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", 0f);
-				Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", compressor - 15f);
-				Singleton<BetterAudio>.Instance.Master.SetFloat("MainVolume", -10f);
-				_drainingEarPieceBattery = false;
-			}
-			//no headset equipped
-			else
-			{
-				MethodInvoker.GetHandler(AccessTools.Method(typeof(Player), "UpdatePhonesReally"));
-				//might be unnecessary?
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", compressorMakeup);
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", compressor);
-				//Singleton<BetterAudio>.Instance.Master.SetFloat("MainVolume", 0f);
-				_drainingEarPieceBattery = false;
-			}
-			if (_earPieceItem != null && BatterySystemPlugin.batteryDictionary.ContainsKey(_earPieceItem))
-				BatterySystemPlugin.batteryDictionary[_earPieceItem] = _drainingEarPieceBattery;
+				//headset has charged battery installed
+				if (_earPieceBattery != null && _earPieceBattery.Value > 0)
+				{
+					MethodInvoker.GetHandler(AccessTools.Method(typeof(Player), "UpdatePhonesReally"));
+					_drainingEarPieceBattery = true;
+				}
+				//headset has no battery
+				else if (_earPieceItem != null)
+				{
+					Singleton<BetterAudio>.Instance.Master.SetFloat("CompressorMakeup", 0f);
+					Singleton<BetterAudio>.Instance.Master.SetFloat("Compressor", compressor - 15f);
+					Singleton<BetterAudio>.Instance.Master.SetFloat("MainVolume", -10f);
+					_drainingEarPieceBattery = false;
+				}
+				//no headset equipped
+				else
+				{
+					MethodInvoker.GetHandler(AccessTools.Method(typeof(Player), "UpdatePhonesReally"));
+					_drainingEarPieceBattery = false;
+				}
+				if (_earPieceItem != null && BatterySystemPlugin.batteryDictionary.ContainsKey(_earPieceItem))
+					BatterySystemPlugin.batteryDictionary[_earPieceItem] = _drainingEarPieceBattery;
 
-			if (BatterySystemConfig.EnableLogs.Value)
-			{
-				Logger.LogInfo("--- BATTERYSYSTEM: Checking EarPiece battery: " + Time.time + " ---");
-				Logger.LogInfo("EarPiece: " + _earPieceItem);
-				Logger.LogInfo("Battery level " + _earPieceBattery?.Value + ", draining " + _drainingEarPieceBattery);
-				Logger.LogInfo("---------------------------------------------");
+				if (BatterySystemConfig.EnableLogs.Value)
+				{
+					Logger.LogInfo("--- BATTERYSYSTEM: Checking EarPiece battery: " + Time.time + " ---");
+					Logger.LogInfo("EarPiece: " + _earPieceItem);
+					Logger.LogInfo("Battery level " + _earPieceBattery?.Value + ", draining " + _drainingEarPieceBattery);
+					Logger.LogInfo("---------------------------------------------");
+				}
 			}
 		}
 
@@ -429,15 +428,17 @@ namespace BatterySystem
 		[PatchPostfix]
 		public static void Postfix(ref ProceduralWeaponAnimation __instance)
 		{
-
-			GInterface114 playerField = (GInterface114)playerInterfaceField.GetValue(__instance);
-			if (BatterySystemPlugin.InGame() && playerField?.Weapon != null && Singleton<GameWorld>.Instance.GetAlivePlayerByProfileID(playerField.Weapon.Owner.ID).IsYourPlayer)
+			if (__instance != null)
 			{
-				BatterySystem.CheckSightIfDraining();
+				GInterface114 playerField = (GInterface114)playerInterfaceField.GetValue(__instance);
+				if (BatterySystemPlugin.InGame() && playerField?.Weapon != null && Singleton<GameWorld>.Instance.GetAlivePlayerByProfileID(playerField.Weapon.Owner.ID).IsYourPlayer)
+				{
+					BatterySystem.CheckSightIfDraining();
+				}
 			}
 		}
 	}
-	//Throws nullreferror.
+	//Throws NullRefError.
 	public class GetBoneForSlotPatch : ModulePatch
 	{
 		private static GClass707.GClass708 _gClass = new GClass707.GClass708();

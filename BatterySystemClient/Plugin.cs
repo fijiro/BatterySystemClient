@@ -11,6 +11,7 @@ using System.Linq;
 namespace BatterySystem
 {
 	/*TODO: 
+	 * headset battery is 100% and not drained on bots
 	 * Enable switching to iron sights when battery runs out
 	 * equipping and removing headwear gives infinite nvg
 	 * switch to coroutines
@@ -34,7 +35,8 @@ namespace BatterySystem
 				new PlayerInitPatch().Enable();
 				new AimSightPatch().Enable();
 				new GetBoneForSlotPatch().Enable();
-				new UpdatePhonesPatch().Enable();
+				if (BatterySystemConfig.EnableHeadsets.Value) 
+					new UpdatePhonesPatch().Enable();
 				new ApplyItemPatch().Enable();
 				new SightDevicePatch().Enable();
 				//new FoldableSightPatch().Enable();

@@ -19,7 +19,7 @@ namespace BatterySystem
 	 * Sound when toggling battery runs out or is removed or added
 	 * battery recharger - idea by Props
 	 */
-	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.4.0")]
+	[BepInPlugin("com.jiro.batterysystem", "BatterySystem", "1.4.1")]
 	[BepInDependency("com.spt-aki.core", "3.6.0")]
 	public class BatterySystemPlugin : BaseUnityPlugin
 	{

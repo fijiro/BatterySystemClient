@@ -65,7 +65,7 @@ namespace BatterySystem
 					BatterySystemPlugin.batteryDictionary.Remove(key);
 			}
 
-			if (BatterySystemConfig.EnableHeadsets.Value && _earPieceItem != null 
+			if (BatterySystemConfig.EnableHeadsets.Value && _earPieceItem != null
 				&& !BatterySystemPlugin.batteryDictionary.ContainsKey(_earPieceItem)) // earpiece
 				BatterySystemPlugin.batteryDictionary.Add(_earPieceItem, _drainingEarPieceBattery);
 
@@ -257,7 +257,8 @@ namespace BatterySystem
 					}
 					foreach (OpticSight optic in key.gameObject.GetComponentsInChildren<OpticSight>(true))
 					{
-						optic.enabled = _drainingSightBattery;
+						if (key.SightMod.Item.Template.Parent._id != "55818ad54bdc2ddc698b4569")
+							optic.enabled = _drainingSightBattery;
 					}
 					foreach (NightVisionComponent nv in key.gameObject.GetComponentsInChildren<NightVisionComponent>(true))
 					{

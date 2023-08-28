@@ -315,7 +315,7 @@ namespace BatterySystem
 				{
 					//sightmodvisualcontroller[scope_all_eotech_exps3(Clone)] = SightMod.sightComponent_0
 					lightMods[key] = key.LightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault();
-					_drainingSightBattery = (lightMods[key] != null && lightMods[key].Value > 0
+					_drainingSightBattery = (lightMods[key] != null && key.LightMod.IsActive && lightMods[key].Value > 0
 						&& IsInSlot(key.LightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot));
 
 					if (BatterySystemPlugin.batteryDictionary.ContainsKey(key.LightMod.Item))
@@ -600,12 +600,12 @@ namespace BatterySystem
 			if (__instance.name == "FPS Camera" && BatterySystemPlugin.InGame())
 			{
 				if (__instance.InProcessSwitching)
-					StaticManager.BeginCoroutine(isSwitching(__instance));
+					StaticManager.BeginCoroutine(IsNVSwitching(__instance));
 				else BatterySystem.SetHeadWearComponents();
 			}
 		}
 		//waits until InProcessSwitching is false and then 
-		private static IEnumerator isSwitching(NightVision nv)
+		private static IEnumerator IsNVSwitching(NightVision nv)
 		{
 			while (nv.InProcessSwitching)
 			{
@@ -629,11 +629,11 @@ namespace BatterySystem
 			if (__instance.name == "FPS Camera" && BatterySystemPlugin.InGame())
 			{
 				if (__instance.InProcessSwitching)
-					StaticManager.BeginCoroutine(isSwitching(__instance));
+					StaticManager.BeginCoroutine(IsSwitching(__instance));
 				else BatterySystem.SetHeadWearComponents();
 			}
 		}
-		private static IEnumerator isSwitching(ThermalVision tv)
+		private static IEnumerator IsSwitching(ThermalVision tv)
 		{
 			while (tv.InProcessSwitching)
 			{

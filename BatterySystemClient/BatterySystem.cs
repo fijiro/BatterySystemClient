@@ -308,13 +308,11 @@ namespace BatterySystem
 			if (BatterySystemConfig.EnableLogs.Value)
 				Logger.LogInfo("--- BATTERYSYSTEM: Checking Tactical Device battery at " + Time.time + " ---");
 
-			//for because modifying lightMods[key]
 			for (int i = 0; i < lightMods.Keys.Count; i++)
 			{
 				TacticalComboVisualController key = lightMods.Keys.ElementAt(i);
 				if (key?.LightMod?.Item != null)
 				{
-					//sightmodvisualcontroller[scope_all_eotech_exps3(Clone)] = SightMod.sightComponent_0
 					lightMods[key] = key.LightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault();
 					_drainingSightBattery = (lightMods[key] != null && key.LightMod.IsActive && lightMods[key].Value > 0
 						&& IsInSlot(key.LightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot));

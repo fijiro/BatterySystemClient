@@ -201,10 +201,10 @@ namespace BatterySystem
 
 			bool _hasBatterySlot(LootItemClass loot, string[] filters = null)
 			{
+				//use default parameter if nothing specified (any drainable battery)
 				filters = filters ?? new string[] { "5672cb124bdc2d1a0f8b4568", "5672cb304bdc2dc2088b456a", "590a358486f77429692b2790" };
 				foreach (Slot slot in loot.Slots)
 				{
-					Logger.LogWarning("Filter: " + slot.Filters.FirstOrDefault()?.Filter.FirstOrDefault());
 					if (slot.Filters.FirstOrDefault()?.Filter.Any(sfilter => filters.Contains(sfilter)) == true)
 						return true;
 				}

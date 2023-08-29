@@ -135,6 +135,7 @@ namespace BatterySystem
 					MethodInvoker.GetHandler(AccessTools.Method(typeof(Player), "UpdatePhonesReally"));
 					_drainingEarPieceBattery = false;
 				}
+
 				if (_earPieceItem != null && BatterySystemPlugin.batteryDictionary.ContainsKey(_earPieceItem))
 					BatterySystemPlugin.batteryDictionary[_earPieceItem] = _drainingEarPieceBattery;
 
@@ -196,6 +197,20 @@ namespace BatterySystem
 
 		public static void SetSightComponents(SightModVisualControllers sightInstance)
 		{
+			LootItemClass lootItem = sightInstance.SightMod.Item as LootItemClass;
+
+			bool _hasBatterySlot(LootItemClass loot, string[] filters = null)
+			{
+				filters = filters ?? new string[] { "5672cb124bdc2d1a0f8b4568", "5672cb304bdc2dc2088b456a", "590a358486f77429692b2790" };
+				foreach (Slot slot in loot.Slots)
+				{
+					Logger.LogWarning("Filter: " + slot.Filters.FirstOrDefault()?.Filter.FirstOrDefault());
+					if (slot.Filters.FirstOrDefault()?.Filter.Any(sfilter => filters.Contains(sfilter)) == true)
+						return true;
+				}
+				return false;
+			}
+
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
 				Logger.LogInfo("--- BATTERYSYSTEM: Setting sight components at " + Time.time + " ---");
@@ -211,7 +226,7 @@ namespace BatterySystem
 				}
 			}
 
-			if (IsInSlot(sightInstance.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot))
+			if (IsInSlot(sightInstance.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot) && _hasBatterySlot(lootItem))
 			{
 				if (BatterySystemConfig.EnableLogs.Value)
 					Logger.LogInfo("Sight Found: " + sightInstance.SightMod.Item);

@@ -35,7 +35,7 @@ namespace BatterySystem
 				new PlayerInitPatch().Enable();
 				new AimSightPatch().Enable();
 				new GetBoneForSlotPatch().Enable();
-				if (BatterySystemConfig.EnableHeadsets.Value) 
+				if (BatterySystemConfig.EnableHeadsets.Value)
 					new UpdatePhonesPatch().Enable();
 				new ApplyItemPatch().Enable();
 				new SightDevicePatch().Enable();

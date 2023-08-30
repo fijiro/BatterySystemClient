@@ -272,11 +272,13 @@ namespace BatterySystem
 					}
 					foreach (OpticSight optic in key.gameObject.GetComponentsInChildren<OpticSight>(true))
 					{
-						if (key.SightMod.Item.Template.Parent._id != "55818ad54bdc2ddc698b4569")
+						if (key.SightMod.Item.Template.Parent._id != "55818ad54bdc2ddc698b4569" && 
+							key.SightMod.Item.Template.Parent._id != "5c0a2cec0db834001b7ce47d") //Exceptions for hhs-1 (tan)
 							optic.enabled = _drainingSightBattery;
 					}
 					foreach (NightVisionComponent nv in key.gameObject.GetComponentsInChildren<NightVisionComponent>(true))
 					{
+						Logger.LogInfo("Logger template parent: " + nv.Item.Template.Parent._name);
 						//nv._on = _drainingSightBattery
 					}
 				}

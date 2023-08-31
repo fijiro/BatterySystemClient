@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using EFT.CameraControl;
 using EFT.Animations;
 using System.Collections;
+using EFT.Visual;
 
 namespace BatterySystem
 {
@@ -65,7 +66,7 @@ namespace BatterySystem
 					BatterySystemPlugin.batteryDictionary.Remove(key);
 			}
 
-			if (BatterySystemConfig.EnableHeadsets.Value && _earPieceItem != null 
+			if (BatterySystemConfig.EnableHeadsets.Value && _earPieceItem != null
 				&& !BatterySystemPlugin.batteryDictionary.ContainsKey(_earPieceItem)) // earpiece
 				BatterySystemPlugin.batteryDictionary.Add(_earPieceItem, _drainingEarPieceBattery);
 
@@ -135,6 +136,7 @@ namespace BatterySystem
 					MethodInvoker.GetHandler(AccessTools.Method(typeof(Player), "UpdatePhonesReally"));
 					_drainingEarPieceBattery = false;
 				}
+
 				if (_earPieceItem != null && BatterySystemPlugin.batteryDictionary.ContainsKey(_earPieceItem))
 					BatterySystemPlugin.batteryDictionary[_earPieceItem] = _drainingEarPieceBattery;
 
@@ -196,6 +198,20 @@ namespace BatterySystem
 
 		public static void SetSightComponents(SightModVisualControllers sightInstance)
 		{
+			LootItemClass lootItem = sightInstance.SightMod.Item as LootItemClass;
+
+			bool _hasBatterySlot(LootItemClass loot, string[] filters = null)
+			{
+				//use default parameter if nothing specified (any drainable battery)
+				filters = filters ?? new string[] { "5672cb124bdc2d1a0f8b4568", "5672cb304bdc2dc2088b456a", "590a358486f77429692b2790" };
+				foreach (Slot slot in loot.Slots)
+				{
+					if (slot.Filters.FirstOrDefault()?.Filter.Any(sfilter => filters.Contains(sfilter)) == true)
+						return true;
+				}
+				return false;
+			}
+
 			if (BatterySystemConfig.EnableLogs.Value)
 			{
 				Logger.LogInfo("--- BATTERYSYSTEM: Setting sight components at " + Time.time + " ---");
@@ -211,7 +227,7 @@ namespace BatterySystem
 				}
 			}
 
-			if (IsInSlot(sightInstance.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot))
+			if (IsInSlot(sightInstance.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot) && _hasBatterySlot(lootItem))
 			{
 				if (BatterySystemConfig.EnableLogs.Value)
 					Logger.LogInfo("Sight Found: " + sightInstance.SightMod.Item);
@@ -239,7 +255,6 @@ namespace BatterySystem
 				SightModVisualControllers key = sightMods.Keys.ElementAt(i);
 				if (key?.SightMod?.Item != null)
 				{
-					//sightmodvisualcontroller[scope_all_eotech_exps3(Clone)] = SightMod.sightComponent_0
 					sightMods[key] = key.SightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault();
 					_drainingSightBattery = (sightMods[key] != null && sightMods[key].Value > 0
 						&& IsInSlot(key.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot));
@@ -257,11 +272,20 @@ namespace BatterySystem
 					}
 					foreach (OpticSight optic in key.gameObject.GetComponentsInChildren<OpticSight>(true))
 					{
-						optic.enabled = _drainingSightBattery;
-					}
-					foreach (NightVisionComponent nv in key.gameObject.GetComponentsInChildren<NightVisionComponent>(true))
-					{
-						//nv._on = _drainingSightBattery
+						/*
+						//for nv sights
+						if (optic.NightVision != null)
+						{
+							Logger.LogWarning("OPTIC ENABLED: " + optic.NightVision?.enabled);
+							//PlayerInitPatch.nvgOnField.SetValue(optic.NightVision, _drainingSightBattery);
+							optic.NightVision.enabled = _drainingSightBattery;
+							Logger.LogWarning("OPTIC ON: " + optic.NightVision.On);
+							continue;
+						}*/
+
+						if (key.SightMod.Item.Template.Parent._id != "55818ad54bdc2ddc698b4569" && 
+							key.SightMod.Item.Template.Parent._id != "5c0a2cec0db834001b7ce47d") //Exceptions for hhs-1 (tan)
+							optic.enabled = _drainingSightBattery;
 					}
 				}
 			}
@@ -307,15 +331,13 @@ namespace BatterySystem
 			if (BatterySystemConfig.EnableLogs.Value)
 				Logger.LogInfo("--- BATTERYSYSTEM: Checking Tactical Device battery at " + Time.time + " ---");
 
-			//for because modifying lightMods[key]
 			for (int i = 0; i < lightMods.Keys.Count; i++)
 			{
 				TacticalComboVisualController key = lightMods.Keys.ElementAt(i);
 				if (key?.LightMod?.Item != null)
 				{
-					//sightmodvisualcontroller[scope_all_eotech_exps3(Clone)] = SightMod.sightComponent_0
 					lightMods[key] = key.LightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault();
-					_drainingSightBattery = (lightMods[key] != null && lightMods[key].Value > 0
+					_drainingSightBattery = (lightMods[key] != null && key.LightMod.IsActive && lightMods[key].Value > 0
 						&& IsInSlot(key.LightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot));
 
 					if (BatterySystemPlugin.batteryDictionary.ContainsKey(key.LightMod.Item))
@@ -551,7 +573,9 @@ namespace BatterySystem
 				BatterySystem.SetSightComponents(__instance);
 			}
 		}
-	}/*
+	}
+	
+	/*
 	public class FoldableSightPatch : ModulePatch
 	{
 		protected override MethodBase GetTargetMethod()
@@ -600,12 +624,12 @@ namespace BatterySystem
 			if (__instance.name == "FPS Camera" && BatterySystemPlugin.InGame())
 			{
 				if (__instance.InProcessSwitching)
-					StaticManager.BeginCoroutine(isSwitching(__instance));
+					StaticManager.BeginCoroutine(IsNVSwitching(__instance));
 				else BatterySystem.SetHeadWearComponents();
 			}
 		}
 		//waits until InProcessSwitching is false and then 
-		private static IEnumerator isSwitching(NightVision nv)
+		private static IEnumerator IsNVSwitching(NightVision nv)
 		{
 			while (nv.InProcessSwitching)
 			{
@@ -629,11 +653,11 @@ namespace BatterySystem
 			if (__instance.name == "FPS Camera" && BatterySystemPlugin.InGame())
 			{
 				if (__instance.InProcessSwitching)
-					StaticManager.BeginCoroutine(isSwitching(__instance));
+					StaticManager.BeginCoroutine(IsSwitching(__instance));
 				else BatterySystem.SetHeadWearComponents();
 			}
 		}
-		private static IEnumerator isSwitching(ThermalVision tv)
+		private static IEnumerator IsSwitching(ThermalVision tv)
 		{
 			while (tv.InProcessSwitching)
 			{

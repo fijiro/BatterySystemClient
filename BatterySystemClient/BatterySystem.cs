@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using EFT.CameraControl;
 using EFT.Animations;
 using System.Collections;
+using EFT.Visual;
 
 namespace BatterySystem
 {
@@ -254,7 +255,6 @@ namespace BatterySystem
 				SightModVisualControllers key = sightMods.Keys.ElementAt(i);
 				if (key?.SightMod?.Item != null)
 				{
-					//sightmodvisualcontroller[scope_all_eotech_exps3(Clone)] = SightMod.sightComponent_0
 					sightMods[key] = key.SightMod.Item.GetItemComponentsInChildren<ResourceComponent>().FirstOrDefault();
 					_drainingSightBattery = (sightMods[key] != null && sightMods[key].Value > 0
 						&& IsInSlot(key.SightMod.Item, Singleton<GameWorld>.Instance?.MainPlayer.ActiveSlot));
@@ -272,14 +272,20 @@ namespace BatterySystem
 					}
 					foreach (OpticSight optic in key.gameObject.GetComponentsInChildren<OpticSight>(true))
 					{
+						/*
+						//for nv sights
+						if (optic.NightVision != null)
+						{
+							Logger.LogWarning("OPTIC ENABLED: " + optic.NightVision?.enabled);
+							//PlayerInitPatch.nvgOnField.SetValue(optic.NightVision, _drainingSightBattery);
+							optic.NightVision.enabled = _drainingSightBattery;
+							Logger.LogWarning("OPTIC ON: " + optic.NightVision.On);
+							continue;
+						}*/
+
 						if (key.SightMod.Item.Template.Parent._id != "55818ad54bdc2ddc698b4569" && 
 							key.SightMod.Item.Template.Parent._id != "5c0a2cec0db834001b7ce47d") //Exceptions for hhs-1 (tan)
 							optic.enabled = _drainingSightBattery;
-					}
-					foreach (NightVisionComponent nv in key.gameObject.GetComponentsInChildren<NightVisionComponent>(true))
-					{
-						Logger.LogInfo("Logger template parent: " + nv.Item.Template.Parent._name);
-						//nv._on = _drainingSightBattery
 					}
 				}
 			}
@@ -567,7 +573,9 @@ namespace BatterySystem
 				BatterySystem.SetSightComponents(__instance);
 			}
 		}
-	}/*
+	}
+	
+	/*
 	public class FoldableSightPatch : ModulePatch
 	{
 		protected override MethodBase GetTargetMethod()
